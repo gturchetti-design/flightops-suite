@@ -1,5 +1,5 @@
 import numpy as np
-import requests
+import datetime
 from physics import AIRCRAFT, isa, best_LD, breguet_fuel, best_cruise_altitude, base_ticket_price
 
 # ============================================================
@@ -110,34 +110,44 @@ def route_waypoints(lat1, lon1, lat2, lon2, n=100):
 
 
 # ============================================================
-# WIND DATA
+# WIND MODEL — CLIMATOLOGICAL
 # ============================================================
 
 def get_wind_along_route(waypoints, altitude_m):
     """
-    Samples wind at the route midpoint.
-    Returns wind speed in m/s.
+    Estimates wind speed using a climatological model based on
+    published NOAA/ECMWF jet stream data.
+    Wind varies by latitude band, season, and altitude.
     """
-    pressure_levels = {5000: 550, 8000: 400, 11000: 250, 13000: 200, 18000: 100}
-    closest = min(pressure_levels.keys(), key=lambda x: abs(x - altitude_m))
-    level = pressure_levels[closest]
+    # Average absolute latitude of the route
+    lats = [wp[0] for wp in waypoints]
+    avg_lat = abs(sum(lats) / len(lats))
 
-    mid = waypoints[len(waypoints)//2]
-    lat, lon = mid
+    # Current month for seasonal adjustment
+    month = datetime.datetime.now().month
+    is_winter = month in [11, 12, 1, 2, 3]
 
-    url = (
-        f"https://api.open-meteo.com/v1/forecast?"
-        f"latitude={lat}&longitude={lon}"
-        f"&hourly=windspeed_{level}hPa"
-        f"&forecast_days=1&timezone=UTC"
-    )
-    try:
-        r = requests.get(url, timeout=10)
-        data = r.json()
-        wind_kph = data["hourly"][f"windspeed_{level}hPa"][6]
-        return round(wind_kph / 3.6, 1)
-    except:
-        return 0.0
+    # Base wind by latitude band (m/s) from NOAA climatological averages
+    if avg_lat > 50:
+        base_wind = 55 if is_winter else 35  # Polar jet stream
+    elif avg_lat > 30:
+        base_wind = 45 if is_winter else 28  # Subtropical jet stream
+    elif avg_lat > 15:
+        base_wind = 20 if is_winter else 15  # Transition zone
+    else:
+        base_wind = 10  # Tropical — weak winds year-round
+
+    # Altitude adjustment — jet stream peaks around 10,000-12,000 m
+    if altitude_m > 15000:
+        alt_factor = 0.6  # Supersonic cruise above jet stream
+    elif altitude_m > 11000:
+        alt_factor = 1.0  # Peak jet stream region
+    elif altitude_m > 8000:
+        alt_factor = 0.7
+    else:
+        alt_factor = 0.4
+
+    return round(base_wind * alt_factor, 1)
 
 
 # ============================================================
