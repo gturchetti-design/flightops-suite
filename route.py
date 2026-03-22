@@ -267,6 +267,3 @@ if __name__ == "__main__":
 
 Save with **Ctrl + S**, then push:
 ```
-git add .
-git commit -m "Fix wind - single midpoint call"
-git push
