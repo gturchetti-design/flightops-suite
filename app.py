@@ -12,16 +12,16 @@ from physics import AIRCRAFT, isa, best_LD
 
 st.set_page_config(
     page_title="FlightOps Suite",
-    page_icon="??",
+    page_icon="",
     layout="wide"
 )
 
-st.title("✈️ FlightOps Suite — Aircraft Route & Performance Optimizer")
+st.title("FlightOps Suite — Aircraft Route & Performance Analyzer")
 st.markdown("*Built by Giorgio Turchetti | Illinois Institute of Technology*")
 st.divider()
 
 # ============================================================
-# SIDEBAR — USER INPUTS
+# SIDEBAR
 # ============================================================
 
 st.sidebar.header("Flight Parameters")
@@ -87,8 +87,8 @@ if run:
         col5, col6, col7, col8 = st.columns(4)
         col5.metric("Cruise Speed", f"{result['cruise_speed_kts']} kts")
         col6.metric("L/D Ratio", result['LD_ratio'])
-        col7.metric("Wind", f"{result['wind_ms']} m/s")
-        col8.metric("Aircraft", result['aircraft'])
+        col7.metric("CO2 Emissions", f"{result['co2_tonnes']} tonnes")
+        col8.metric("Wind", f"{result['wind_ms']} m/s")
 
         st.divider()
 
@@ -123,6 +123,7 @@ if run:
         altitudes = np.arange(5000, 14000, 500)
         ld_values = []
         fuel_values = []
+        co2_values = []
 
         ac = AIRCRAFT[aircraft_name]
         W_kg = ac["OEW"] + payload_kg + ac["max_fuel"] * 0.85
@@ -135,48 +136,58 @@ if run:
             CD = ac["CD0"] + ac["k"] * CL**2
             ld = CL / CD
             ld_values.append(ld)
-            fuel, _ = fuel_burned, _ = __import__('physics').breguet_fuel(
-                W_N, result["distance_km"] * 1000, ac["TSFC"], ld, V
-            )
-            fuel_values.append(fuel / 9.80665)
+            from physics import breguet_fuel
+            fuel, _ = breguet_fuel(W_N, result["distance_km"] * 1000, ac["TSFC"], ld, V)
+            fuel_kg = fuel / 9.80665
+            fuel_values.append(fuel_kg)
+            co2_values.append(fuel_kg * 3.16 / 1000)
 
-        col_chart1, col_chart2 = st.columns(2)
+        col_chart1, col_chart2, col_chart3 = st.columns(3)
 
         with col_chart1:
             fig1 = go.Figure()
             fig1.add_trace(go.Scatter(
-                x=altitudes / 1000,
-                y=ld_values,
-                mode="lines",
-                line=dict(color="#00BFFF", width=2),
+                x=altitudes / 1000, y=ld_values,
+                mode="lines", line=dict(color="#00BFFF", width=2),
                 name=aircraft_name
             ))
             fig1.update_layout(
                 title="L/D Ratio vs Altitude",
                 xaxis_title="Altitude (km)",
                 yaxis_title="L/D Ratio",
-                template="plotly_dark",
-                height=350
+                template="plotly_dark", height=350
             )
             st.plotly_chart(fig1, width='stretch')
 
         with col_chart2:
             fig2 = go.Figure()
             fig2.add_trace(go.Scatter(
-                x=altitudes / 1000,
-                y=fuel_values,
-                mode="lines",
-                line=dict(color="#FF6B6B", width=2),
+                x=altitudes / 1000, y=fuel_values,
+                mode="lines", line=dict(color="#FF6B6B", width=2),
                 name=aircraft_name
             ))
             fig2.update_layout(
                 title="Fuel Burn vs Altitude",
                 xaxis_title="Altitude (km)",
                 yaxis_title="Fuel Burned (kg)",
-                template="plotly_dark",
-                height=350
+                template="plotly_dark", height=350
             )
             st.plotly_chart(fig2, width='stretch')
+
+        with col_chart3:
+            fig3 = go.Figure()
+            fig3.add_trace(go.Scatter(
+                x=altitudes / 1000, y=co2_values,
+                mode="lines", line=dict(color="#90EE90", width=2),
+                name=aircraft_name
+            ))
+            fig3.update_layout(
+                title="CO2 Emissions vs Altitude",
+                xaxis_title="Altitude (km)",
+                yaxis_title="CO2 (tonnes)",
+                template="plotly_dark", height=350
+            )
+            st.plotly_chart(fig3, width='stretch')
 
         # ---- COMPARISON ----
         if compare and aircraft_name_2:
@@ -193,6 +204,7 @@ if run:
                 st.metric("Flight Time", f"{result['flight_time_hr']} hrs")
                 st.metric("Cruise Altitude", f"{result['cruise_altitude_ft']:,} ft")
                 st.metric("L/D Ratio", result['LD_ratio'])
+                st.metric("CO2 Emissions", f"{result['co2_tonnes']} tonnes")
 
             with col_b:
                 st.markdown(f"**{aircraft_name_2}**")
@@ -200,6 +212,7 @@ if run:
                 st.metric("Flight Time", f"{result2['flight_time_hr']} hrs")
                 st.metric("Cruise Altitude", f"{result2['cruise_altitude_ft']:,} ft")
                 st.metric("L/D Ratio", result2['LD_ratio'])
+                st.metric("CO2 Emissions", f"{result2['co2_tonnes']} tonnes")
 
 else:
-    st.info("👈 Select your route and aircraft in the sidebar, then click **Analyze Route**.")
+    st.info("Select your route and aircraft in the sidebar, then click **Analyze Route**.")
