@@ -4,13 +4,6 @@ folium
 streamlit-folium
 numpy
 scipy
-requests 
-
- [theme]
-primaryColor = "#00bfff"
-backgroundColor = "#0a0e1a"
-secondaryBackgroundColor = "#0d1220"
-textColor = "#e0e6f0"
-font = "sans serif"
-```
-
+requests
+dash
+dash-leaflet
