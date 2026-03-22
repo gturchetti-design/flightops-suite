@@ -263,7 +263,3 @@ if __name__ == "__main__":
     for key, value in result.items():
         if key != "waypoints":
             print(f"{key}: {value}")
-```
-
-Save with **Ctrl + S**, then push:
-```
