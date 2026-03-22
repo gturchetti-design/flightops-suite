@@ -110,39 +110,34 @@ def route_waypoints(lat1, lon1, lat2, lon2, n=100):
 
 
 # ============================================================
-# WIND DATA — MULTI-POINT SAMPLING
+# WIND DATA
 # ============================================================
 
 def get_wind_along_route(waypoints, altitude_m):
     """
-    Samples wind at 5 evenly spaced points along the route
-    and returns the average wind speed in m/s.
+    Samples wind at the route midpoint.
+    Returns wind speed in m/s.
     """
     pressure_levels = {5000: 550, 8000: 400, 11000: 250, 13000: 200, 18000: 100}
     closest = min(pressure_levels.keys(), key=lambda x: abs(x - altitude_m))
     level = pressure_levels[closest]
 
-    # Sample 5 points along the route
-    indices = [int(i * (len(waypoints)-1) / 4) for i in range(5)]
-    sample_points = [waypoints[i] for i in indices]
+    mid = waypoints[len(waypoints)//2]
+    lat, lon = mid
 
-    wind_speeds = []
-    for lat, lon in sample_points:
-        url = (
-            f"https://api.open-meteo.com/v1/forecast?"
-            f"latitude={lat}&longitude={lon}"
-            f"&hourly=windspeed_{level}hPa"
-            f"&forecast_days=1&timezone=UTC"
-        )
-        try:
-            r = requests.get(url, timeout=5)
-            data = r.json()
-            wind_kph = data["hourly"][f"windspeed_{level}hPa"][0]
-            wind_speeds.append(wind_kph / 3.6)
-        except:
-            wind_speeds.append(0.0)
-
-    return round(sum(wind_speeds) / len(wind_speeds), 1) if wind_speeds else 0.0
+    url = (
+        f"https://api.open-meteo.com/v1/forecast?"
+        f"latitude={lat}&longitude={lon}"
+        f"&hourly=windspeed_{level}hPa"
+        f"&forecast_days=1&timezone=UTC"
+    )
+    try:
+        r = requests.get(url, timeout=10)
+        data = r.json()
+        wind_kph = data["hourly"][f"windspeed_{level}hPa"][6]
+        return round(wind_kph / 3.6, 1)
+    except:
+        return 0.0
 
 
 # ============================================================
@@ -156,7 +151,7 @@ def co2_emissions(fuel_burned_kg):
 
 
 # ============================================================
-# PROFITABILITY ANALYSIS
+# PROFITABILITY
 # ============================================================
 
 def profitability(aircraft_name, fuel_burned_kg, distance_km,
@@ -166,12 +161,8 @@ def profitability(aircraft_name, fuel_burned_kg, distance_km,
 
     if seats == 0:
         return {
-            "seats": 0,
-            "passengers": 0,
-            "revenue": 0,
-            "fuel_cost": 0,
-            "profit": 0,
-            "profit_per_pax": 0,
+            "seats": 0, "passengers": 0, "revenue": 0,
+            "fuel_cost": 0, "profit": 0, "profit_per_pax": 0,
             "is_freighter": True
         }
 
@@ -218,11 +209,11 @@ def analyze_route(origin_code, destination_code, aircraft_name,
     T, P, rho = isa(best_alt)
     V = ac["cruise_mach"] * np.sqrt(1.4 * 287.05 * T)
 
-    # Multi-point wind sampling
     waypoints = route_waypoints(
         origin["lat"], origin["lon"],
         destination["lat"], destination["lon"]
     )
+
     wind_ms = get_wind_along_route(waypoints, best_alt)
     V_ground = V + wind_ms
 
@@ -233,10 +224,8 @@ def analyze_route(origin_code, destination_code, aircraft_name,
 
     co2_kg, co2_tonnes = co2_emissions(fuel_burned_kg)
 
-    # Ticket price model
     ticket_price = base_ticket_price(distance_km) * ticket_price_multiplier
 
-    # Profitability
     profit_data = profitability(
         aircraft_name, fuel_burned_kg, distance_km,
         fuel_price, ticket_price, load_factor
@@ -269,8 +258,15 @@ def analyze_route(origin_code, destination_code, aircraft_name,
 # ============================================================
 
 if __name__ == "__main__":
-    print("=== Route Analysis: ORD → LHR on Boeing 787-9 ===\n")
+    print("=== Route Analysis: ORD -> LHR on Boeing 787-9 ===\n")
     result = analyze_route("ORD", "LHR", "Boeing 787-9")
     for key, value in result.items():
         if key != "waypoints":
             print(f"{key}: {value}")
+```
+
+Save with **Ctrl + S**, then push:
+```
+git add .
+git commit -m "Fix wind - single midpoint call"
+git push
