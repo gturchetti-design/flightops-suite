@@ -1,6 +1,6 @@
 import numpy as np
 import requests
-from physics import AIRCRAFT, isa, best_LD, breguet_fuel, best_cruise_altitude
+from physics import AIRCRAFT, isa, best_LD, breguet_fuel, best_cruise_altitude, base_ticket_price
 
 # ============================================================
 # AIRPORT COORDINATES
@@ -14,7 +14,6 @@ AIRPORTS = {
     "SFO": {"name": "San Francisco", "lat": 37.6213, "lon": -122.3790},
     "MIA": {"name": "Miami", "lat": 25.7959, "lon": -80.2870},
     "IAD": {"name": "Washington Dulles", "lat": 38.9531, "lon": -77.4565},
-    "ORD": {"name": "Chicago O'Hare", "lat": 41.9742, "lon": -87.9073},
     "YYZ": {"name": "Toronto Pearson", "lat": 43.6777, "lon": -79.6248},
     "YVR": {"name": "Vancouver", "lat": 49.1967, "lon": -123.1815},
     "MEX": {"name": "Mexico City", "lat": 19.4363, "lon": -99.0721},
@@ -86,13 +85,8 @@ def great_circle_distance(lat1, lon1, lat2, lon2):
 
 
 def route_waypoints(lat1, lon1, lat2, lon2, n=100):
-    """
-    Returns n points along the TRUE great circle route using
-    spherical interpolation. This produces the curved arc on the map.
-    """
     lat1, lon1, lat2, lon2 = map(np.radians, [lat1, lon1, lat2, lon2])
 
-    # Convert to cartesian
     def to_cart(lat, lon):
         return np.array([np.cos(lat)*np.cos(lon),
                          np.cos(lat)*np.sin(lon),
@@ -100,8 +94,6 @@ def route_waypoints(lat1, lon1, lat2, lon2, n=100):
 
     p1 = to_cart(lat1, lon1)
     p2 = to_cart(lat2, lon2)
-
-    # Angle between them
     omega = np.arccos(np.clip(np.dot(p1, p2), -1, 1))
 
     waypoints = []
@@ -118,26 +110,39 @@ def route_waypoints(lat1, lon1, lat2, lon2, n=100):
 
 
 # ============================================================
-# WIND DATA
+# WIND DATA — MULTI-POINT SAMPLING
 # ============================================================
 
-def get_wind(lat, lon, altitude_m):
-    pressure_levels = {5000: 550, 8000: 400, 11000: 250, 13000: 200}
+def get_wind_along_route(waypoints, altitude_m):
+    """
+    Samples wind at 5 evenly spaced points along the route
+    and returns the average wind speed in m/s.
+    """
+    pressure_levels = {5000: 550, 8000: 400, 11000: 250, 13000: 200, 18000: 100}
     closest = min(pressure_levels.keys(), key=lambda x: abs(x - altitude_m))
     level = pressure_levels[closest]
-    url = (
-        f"https://api.open-meteo.com/v1/forecast?"
-        f"latitude={lat}&longitude={lon}"
-        f"&hourly=windspeed_{level}hPa"
-        f"&forecast_days=1&timezone=UTC"
-    )
-    try:
-        r = requests.get(url, timeout=5)
-        data = r.json()
-        wind_kph = data["hourly"][f"windspeed_{level}hPa"][0]
-        return wind_kph / 3.6
-    except:
-        return 0.0
+
+    # Sample 5 points along the route
+    indices = [int(i * (len(waypoints)-1) / 4) for i in range(5)]
+    sample_points = [waypoints[i] for i in indices]
+
+    wind_speeds = []
+    for lat, lon in sample_points:
+        url = (
+            f"https://api.open-meteo.com/v1/forecast?"
+            f"latitude={lat}&longitude={lon}"
+            f"&hourly=windspeed_{level}hPa"
+            f"&forecast_days=1&timezone=UTC"
+        )
+        try:
+            r = requests.get(url, timeout=5)
+            data = r.json()
+            wind_kph = data["hourly"][f"windspeed_{level}hPa"][0]
+            wind_speeds.append(wind_kph / 3.6)
+        except:
+            wind_speeds.append(0.0)
+
+    return round(sum(wind_speeds) / len(wind_speeds), 1) if wind_speeds else 0.0
 
 
 # ============================================================
@@ -145,20 +150,56 @@ def get_wind(lat, lon, altitude_m):
 # ============================================================
 
 def co2_emissions(fuel_burned_kg):
-    """
-    Estimates CO2 emissions from fuel burned.
-    Jet fuel produces ~3.16 kg of CO2 per kg of fuel burned.
-    """
     co2_kg = fuel_burned_kg * 3.16
     co2_tonnes = co2_kg / 1000
     return round(co2_kg, 1), round(co2_tonnes, 2)
 
 
 # ============================================================
+# PROFITABILITY ANALYSIS
+# ============================================================
+
+def profitability(aircraft_name, fuel_burned_kg, distance_km,
+                  fuel_price_per_kg, ticket_price, load_factor):
+    ac = AIRCRAFT[aircraft_name]
+    seats = ac["seats"]
+
+    if seats == 0:
+        return {
+            "seats": 0,
+            "passengers": 0,
+            "revenue": 0,
+            "fuel_cost": 0,
+            "profit": 0,
+            "profit_per_pax": 0,
+            "is_freighter": True
+        }
+
+    passengers = int(seats * load_factor / 100)
+    revenue = passengers * ticket_price
+    fuel_cost = fuel_burned_kg * fuel_price_per_kg
+    profit = revenue - fuel_cost
+    profit_per_pax = profit / passengers if passengers > 0 else 0
+
+    return {
+        "seats": seats,
+        "passengers": passengers,
+        "revenue": round(revenue),
+        "fuel_cost": round(fuel_cost),
+        "profit": round(profit),
+        "profit_per_pax": round(profit_per_pax, 2),
+        "is_freighter": False
+    }
+
+
+# ============================================================
 # FULL ROUTE ANALYSIS
 # ============================================================
 
-def analyze_route(origin_code, destination_code, aircraft_name, payload_kg=15000):
+def analyze_route(origin_code, destination_code, aircraft_name,
+                  payload_kg=15000, fuel_price=0.75,
+                  load_factor=85, ticket_price_multiplier=1.0):
+
     ac = AIRCRAFT[aircraft_name]
     origin = AIRPORTS[origin_code]
     destination = AIRPORTS[destination_code]
@@ -177,9 +218,12 @@ def analyze_route(origin_code, destination_code, aircraft_name, payload_kg=15000
     T, P, rho = isa(best_alt)
     V = ac["cruise_mach"] * np.sqrt(1.4 * 287.05 * T)
 
-    mid_lat = (origin["lat"] + destination["lat"]) / 2
-    mid_lon = (origin["lon"] + destination["lon"]) / 2
-    wind_ms = get_wind(mid_lat, mid_lon, best_alt)
+    # Multi-point wind sampling
+    waypoints = route_waypoints(
+        origin["lat"], origin["lon"],
+        destination["lat"], destination["lon"]
+    )
+    wind_ms = get_wind_along_route(waypoints, best_alt)
     V_ground = V + wind_ms
 
     fuel_burned, W_final = breguet_fuel(W_N, distance_m, ac["TSFC"], best_ld, V)
@@ -189,9 +233,13 @@ def analyze_route(origin_code, destination_code, aircraft_name, payload_kg=15000
 
     co2_kg, co2_tonnes = co2_emissions(fuel_burned_kg)
 
-    waypoints = route_waypoints(
-        origin["lat"], origin["lon"],
-        destination["lat"], destination["lon"]
+    # Ticket price model
+    ticket_price = base_ticket_price(distance_km) * ticket_price_multiplier
+
+    # Profitability
+    profit_data = profitability(
+        aircraft_name, fuel_burned_kg, distance_km,
+        fuel_price, ticket_price, load_factor
     )
 
     return {
@@ -203,13 +251,15 @@ def analyze_route(origin_code, destination_code, aircraft_name, payload_kg=15000
         "cruise_altitude_ft": round(best_alt * 3.28084),
         "cruise_speed_ms": round(V, 1),
         "cruise_speed_kts": round(V * 1.94384),
-        "wind_ms": round(wind_ms, 1),
+        "wind_ms": wind_ms,
         "LD_ratio": round(best_ld, 2),
         "fuel_burned_kg": round(fuel_burned_kg, 1),
         "fuel_burned_lbs": round(fuel_burned_kg * 2.205),
         "flight_time_hr": round(flight_time_hr, 2),
         "co2_kg": co2_kg,
         "co2_tonnes": co2_tonnes,
+        "ticket_price": round(ticket_price),
+        **profit_data,
         "waypoints": waypoints,
     }
 
@@ -219,7 +269,7 @@ def analyze_route(origin_code, destination_code, aircraft_name, payload_kg=15000
 # ============================================================
 
 if __name__ == "__main__":
-    print("=== Route Analysis Test: ORD → LHR on Boeing 787-9 ===\n")
+    print("=== Route Analysis: ORD → LHR on Boeing 787-9 ===\n")
     result = analyze_route("ORD", "LHR", "Boeing 787-9")
     for key, value in result.items():
         if key != "waypoints":
