@@ -1,6 +1,9 @@
 import numpy as np
 import datetime
-from physics import AIRCRAFT, isa, best_LD, breguet_fuel, best_cruise_altitude, base_ticket_price
+from physics import (
+    AIRCRAFT, isa, best_LD, breguet_fuel, best_cruise_altitude,
+    base_ticket_price, nonfuel_cost_per_asm,
+)
 
 # ============================================================
 # AIRPORT COORDINATES
@@ -119,29 +122,25 @@ def get_wind_along_route(waypoints, altitude_m):
     published NOAA/ECMWF jet stream data.
     Wind varies by latitude band, season, and altitude.
     """
-    # Average absolute latitude of the route
     lats = [wp[0] for wp in waypoints]
     avg_lat = abs(sum(lats) / len(lats))
 
-    # Current month for seasonal adjustment
     month = datetime.datetime.now().month
     is_winter = month in [11, 12, 1, 2, 3]
 
-    # Base wind by latitude band (m/s) from NOAA climatological averages
     if avg_lat > 50:
-        base_wind = 55 if is_winter else 35  # Polar jet stream
+        base_wind = 55 if is_winter else 35
     elif avg_lat > 30:
-        base_wind = 45 if is_winter else 28  # Subtropical jet stream
+        base_wind = 45 if is_winter else 28
     elif avg_lat > 15:
-        base_wind = 20 if is_winter else 15  # Transition zone
+        base_wind = 20 if is_winter else 15
     else:
-        base_wind = 10  # Tropical — weak winds year-round
+        base_wind = 10
 
-    # Altitude adjustment — jet stream peaks around 10,000-12,000 m
     if altitude_m > 15000:
-        alt_factor = 0.6  # Supersonic cruise above jet stream
+        alt_factor = 0.6
     elif altitude_m > 11000:
-        alt_factor = 1.0  # Peak jet stream region
+        alt_factor = 1.0
     elif altitude_m > 8000:
         alt_factor = 0.7
     else:
@@ -161,7 +160,7 @@ def co2_emissions(fuel_burned_kg):
 
 
 # ============================================================
-# PROFITABILITY
+# PROFITABILITY (fuel-cost basis — unchanged)
 # ============================================================
 
 def profitability(aircraft_name, fuel_burned_kg, distance_km,
@@ -190,6 +189,132 @@ def profitability(aircraft_name, fuel_burned_kg, distance_km,
         "profit": round(profit),
         "profit_per_pax": round(profit_per_pax, 2),
         "is_freighter": False
+    }
+
+
+# ============================================================
+# ECONOMICS ENGINE  (MODULE 1)
+# ============================================================
+# All values are additive — no existing keys are changed.
+#
+# Unit conventions (matching US airline industry standards):
+#   CASM / RASM / Yield  →  US cents per Available Seat Mile (¢/ASM)
+#   op_profit            →  USD (revenue minus total operating cost)
+#   op_margin_pct        →  percent (can be negative)
+#   sensitivity deltas   →  USD change vs base-case op_profit
+#
+# Non-fuel costs are estimated via physics.nonfuel_cost_per_asm(),
+# which returns $/ASM by aircraft category.  This is intentionally
+# transparent and labelled clearly in the output so analysts can
+# audit or override the assumption.
+
+def _compute_economics(
+    aircraft_name: str,
+    distance_km: float,
+    fuel_burned_kg: float,
+    fuel_price: float,
+    load_factor: float,
+    ticket_price_multiplier: float,
+    profit_data: dict,
+) -> dict:
+    """
+    Compute unit economics and sensitivity analysis for a passenger route.
+    Returns a flat dict of new keys to merge into analyze_route() output.
+    Returns None values for freighters.
+    """
+    if profit_data["is_freighter"]:
+        return {
+            "distance_mi":       round(distance_km * 0.621371, 1),
+            "asm":               None,
+            "nonfuel_cost":      None,
+            "total_opex":        None,
+            "op_profit":         None,
+            "casm_cents":        None,
+            "casm_fuel_cents":   None,
+            "rasm_cents":        None,
+            "yield_cents":       None,
+            "op_margin_pct":     None,
+            "breakeven_lf":      None,
+            "sensitivity":       None,
+        }
+
+    distance_mi  = distance_km * 0.621371
+    seats        = profit_data["seats"]
+    passengers   = profit_data["passengers"]
+    revenue      = profit_data["revenue"]
+    fuel_cost    = profit_data["fuel_cost"]
+    ticket_price = base_ticket_price(distance_km) * ticket_price_multiplier
+
+    # Available Seat Miles
+    asm = seats * distance_mi
+
+    # Non-fuel operating cost
+    nf_rate    = nonfuel_cost_per_asm(aircraft_name)   # $/ASM
+    nonfuel    = nf_rate * asm
+    total_opex = fuel_cost + nonfuel
+    op_profit  = revenue - total_opex
+
+    # Unit economics in cents (industry standard)
+    casm_cents      = (total_opex / asm * 100) if asm > 0 else 0.0
+    casm_fuel_cents = (fuel_cost  / asm * 100) if asm > 0 else 0.0
+    rasm_cents      = (revenue    / asm * 100) if asm > 0 else 0.0
+
+    # Yield: revenue per revenue passenger mile (¢/RPM)
+    rpm          = passengers * distance_mi
+    yield_cents  = (revenue / rpm * 100) if rpm > 0 else 0.0
+
+    # Operating margin vs total opex
+    op_margin_pct = (op_profit / revenue * 100) if revenue > 0 else 0.0
+
+    # Break-even load factor (% of seats needed to cover total opex)
+    if seats > 0 and ticket_price > 0:
+        belf = min(round(total_opex / (seats * ticket_price) * 100, 1), 100.0)
+    else:
+        belf = None
+
+    # ── Sensitivity analysis ─────────────────────────────────────────────────
+    # Each scenario recomputes op_profit with one variable stressed.
+    # Delta = scenario_op_profit - base_op_profit.
+    # Negative delta means profit falls — immediately readable for analysts.
+
+    def _op_profit_scenario(fp, lf, tm):
+        tp   = base_ticket_price(distance_km) * tm
+        pax  = int(seats * lf / 100)
+        rev  = pax * tp
+        fc   = fuel_burned_kg * fp
+        return rev - fc - nonfuel    # nonfuel stays constant in all scenarios
+
+    sensitivity = {
+        # Fuel cost +20% (e.g. oil price spike or hedging miss)
+        "fuel_plus20": round(
+            _op_profit_scenario(fuel_price * 1.20, load_factor, ticket_price_multiplier)
+            - op_profit
+        ),
+        # Load factor drops 10 percentage points (demand shock or competition)
+        "lf_minus10pp": round(
+            _op_profit_scenario(fuel_price, max(load_factor - 10, 0), ticket_price_multiplier)
+            - op_profit
+        ),
+        # Ticket price falls 15% (fare war or yield dilution)
+        "ticket_minus15pct": round(
+            _op_profit_scenario(fuel_price, load_factor, ticket_price_multiplier * 0.85)
+            - op_profit
+        ),
+    }
+
+    return {
+        "distance_mi":      round(distance_mi, 1),
+        "asm":              round(asm),
+        "nonfuel_cost":     round(nonfuel),
+        "total_opex":       round(total_opex),
+        "op_profit":        round(op_profit),
+        "casm_cents":       round(casm_cents, 2),
+        "casm_fuel_cents":  round(casm_fuel_cents, 2),
+        "rasm_cents":       round(rasm_cents, 2),
+        "yield_cents":      round(yield_cents, 2),
+        "op_margin_pct":    round(op_margin_pct, 1),
+        "breakeven_lf":     belf,
+        "sensitivity":      sensitivity,
     }
 
 
@@ -241,25 +366,37 @@ def analyze_route(origin_code, destination_code, aircraft_name,
         fuel_price, ticket_price, load_factor
     )
 
+    # ── Module 1: Economics Engine ────────────────────────────────────────────
+    econ = _compute_economics(
+        aircraft_name, distance_km, fuel_burned_kg,
+        fuel_price, load_factor, ticket_price_multiplier,
+        profit_data,
+    )
+
     return {
-        "origin": origin["name"],
-        "destination": destination["name"],
-        "aircraft": aircraft_name,
-        "distance_km": round(distance_km, 1),
-        "cruise_altitude_m": best_alt,
-        "cruise_altitude_ft": round(best_alt * 3.28084),
-        "cruise_speed_ms": round(V, 1),
-        "cruise_speed_kts": round(V * 1.94384),
-        "wind_ms": wind_ms,
-        "LD_ratio": round(best_ld, 2),
-        "fuel_burned_kg": round(fuel_burned_kg, 1),
-        "fuel_burned_lbs": round(fuel_burned_kg * 2.205),
-        "flight_time_hr": round(flight_time_hr, 2),
-        "co2_kg": co2_kg,
-        "co2_tonnes": co2_tonnes,
-        "ticket_price": round(ticket_price),
+        # ── Core flight data (unchanged) ──────────────────────────────────────
+        "origin":              origin["name"],
+        "destination":         destination["name"],
+        "aircraft":            aircraft_name,
+        "distance_km":         round(distance_km, 1),
+        "cruise_altitude_m":   best_alt,
+        "cruise_altitude_ft":  round(best_alt * 3.28084),
+        "cruise_speed_ms":     round(V, 1),
+        "cruise_speed_kts":    round(V * 1.94384),
+        "wind_ms":             wind_ms,
+        "LD_ratio":            round(best_ld, 2),
+        "fuel_burned_kg":      round(fuel_burned_kg, 1),
+        "fuel_burned_lbs":     round(fuel_burned_kg * 2.205),
+        "flight_time_hr":      round(flight_time_hr, 2),
+        "co2_kg":              co2_kg,
+        "co2_tonnes":          co2_tonnes,
+        "ticket_price":        round(ticket_price),
+        # ── Profitability (fuel-cost basis — unchanged) ───────────────────────
         **profit_data,
-        "waypoints": waypoints,
+        # ── Module 1: Unit economics & sensitivity (new keys) ─────────────────
+        **econ,
+        # ── Route waypoints (for map rendering) ──────────────────────────────
+        "waypoints":           waypoints,
     }
 
 
@@ -268,8 +405,15 @@ def analyze_route(origin_code, destination_code, aircraft_name,
 # ============================================================
 
 if __name__ == "__main__":
-    print("=== Route Analysis: ORD -> LHR on Boeing 787-9 ===\n")
+    print("=== Route Analysis: ORD → LHR on Boeing 787-9 ===\n")
     result = analyze_route("ORD", "LHR", "Boeing 787-9")
+    skip = {"waypoints"}
     for key, value in result.items():
-        if key != "waypoints":
-            print(f"{key}: {value}")
+        if key not in skip:
+            print(f"  {key:<22} {value}")
+
+    print("\n=== Sensitivity (delta op_profit vs base) ===")
+    s = result["sensitivity"]
+    print(f"  Fuel +20%          ${s['fuel_plus20']:>+,}")
+    print(f"  Load factor -10pp  ${s['lf_minus10pp']:>+,}")
+    print(f"  Ticket price -15%  ${s['ticket_minus15pct']:>+,}")

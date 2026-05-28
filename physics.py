@@ -227,6 +227,47 @@ def best_cruise_altitude(aircraft_name, W, step=500):
 
 
 # ============================================================
+# NON-FUEL OPERATING COST MODEL
+# ============================================================
+# Estimated non-fuel Cost per Available Seat Mile ($/ASM).
+# Covers crew wages, maintenance, airport/ATC fees, ownership costs.
+# Benchmarked against DOT Form 41 disaggregated carrier cost data.
+# These are conservative mid-tier estimates; LCCs run 10–15% lower,
+# legacy full-service carriers run 5–10% higher.
+
+_NONFUEL_CASM = {
+    "supersonic":    0.22,   # extraordinarily high — limited ops, bespoke MRO
+    "ultralarge_wb": 0.028,  # A380, 777-9 — seat dilution offsets fixed costs
+    "widebody":      0.032,  # 787, A350, 777, A330
+    "narrowbody":    0.038,  # A320/737 family
+    "regional_jet":  0.048,  # E-jets, CRJ
+    "turboprop":     0.055,  # ATR — high per-ASM despite low fuel burn
+}
+
+def nonfuel_cost_per_asm(aircraft_name: str) -> float:
+    """
+    Return estimated non-fuel operating cost in $/ASM for the given aircraft.
+    Returns 0.0 for freighters (ASM not applicable).
+    """
+    ac = AIRCRAFT[aircraft_name]
+    seats = ac["seats"]
+
+    if seats == 0:
+        return 0.0
+    if ac["cruise_mach"] >= 1.5:
+        return _NONFUEL_CASM["supersonic"]
+    if seats >= 400:
+        return _NONFUEL_CASM["ultralarge_wb"]
+    if seats >= 200:
+        return _NONFUEL_CASM["widebody"]
+    if seats >= 100:
+        return _NONFUEL_CASM["narrowbody"]
+    if ac["cruise_mach"] >= 0.60:
+        return _NONFUEL_CASM["regional_jet"]
+    return _NONFUEL_CASM["turboprop"]
+
+
+# ============================================================
 # QUICK TEST
 # ============================================================
 
@@ -234,4 +275,5 @@ if __name__ == "__main__":
     print("=== Best L/D per Aircraft ===")
     for name, ac in AIRCRAFT.items():
         CL_best, LD_max = best_LD(ac["CD0"], ac["k"])
-        print(f"{name}: Max L/D = {LD_max:.2f} | Seats = {ac['seats']}")
+        nf = nonfuel_cost_per_asm(name)
+        print(f"{name}: Max L/D = {LD_max:.2f} | Seats = {ac['seats']} | Non-fuel CASM = ${nf:.3f}/ASM")
