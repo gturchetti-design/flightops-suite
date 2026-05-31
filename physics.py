@@ -152,6 +152,63 @@ AIRCRAFT = {
         "TSFC": 2.40e-5, "cruise_mach": 1.700, "cruise_alt": 18000,
         "seats": 65,
     },
+    # ── BUSINESS & PRIVATE JETS ─────────────────────────────────
+    "Gulfstream G700": {
+        "CD0": 0.0210, "k": 0.0320, "S": 170.0,
+        "MTOW": 52163, "OEW": 29030, "max_fuel": 19504,
+        "TSFC": 1.28e-5, "cruise_mach": 0.925, "cruise_alt": 15545,
+        "seats": 19,
+        "category": "private", "range_nm": 7500, "cost_hr": 12000,
+    },
+    "Bombardier Global 7500": {
+        "CD0": 0.0205, "k": 0.0318, "S": 167.3,
+        "MTOW": 53070, "OEW": 29030, "max_fuel": 20460,
+        "TSFC": 1.26e-5, "cruise_mach": 0.925, "cruise_alt": 15545,
+        "seats": 19,
+        "category": "private", "range_nm": 7700, "cost_hr": 13500,
+    },
+    "Dassault Falcon 10X": {
+        "CD0": 0.0208, "k": 0.0320, "S": 158.0,
+        "MTOW": 52800, "OEW": 27200, "max_fuel": 19000,
+        "TSFC": 1.28e-5, "cruise_mach": 0.925, "cruise_alt": 15545,
+        "seats": 16,
+        "category": "private", "range_nm": 7500, "cost_hr": 14000,
+    },
+    "Gulfstream G650ER": {
+        "CD0": 0.0212, "k": 0.0322, "S": 170.0,
+        "MTOW": 48557, "OEW": 25924, "max_fuel": 18760,
+        "TSFC": 1.30e-5, "cruise_mach": 0.925, "cruise_alt": 15545,
+        "seats": 18,
+        "category": "private", "range_nm": 7500, "cost_hr": 11000,
+    },
+    "Boeing BBJ 787": {
+        "CD0": 0.0210, "k": 0.0340, "S": 325.0,
+        "MTOW": 227930, "OEW": 115000, "max_fuel": 126920,
+        "TSFC": 1.42e-5, "cruise_mach": 0.850, "cruise_alt": 13100,
+        "seats": 40,
+        "category": "private", "range_nm": 9945, "cost_hr": 35000,
+    },
+    "Boeing BBJ 737 MAX": {
+        "CD0": 0.0248, "k": 0.0365, "S": 125.0,
+        "MTOW": 88314, "OEW": 44676, "max_fuel": 25816,
+        "TSFC": 1.48e-5, "cruise_mach": 0.785, "cruise_alt": 12497,
+        "seats": 25,
+        "category": "private", "range_nm": 6500, "cost_hr": 18000,
+    },
+    "Embraer Lineage 1000E": {
+        "CD0": 0.0252, "k": 0.0375, "S": 92.5,
+        "MTOW": 56400, "OEW": 31200, "max_fuel": 18800,
+        "TSFC": 1.50e-5, "cruise_mach": 0.820, "cruise_alt": 13716,
+        "seats": 19,
+        "category": "private", "range_nm": 4600, "cost_hr": 9500,
+    },
+    "Cessna Citation Longitude": {
+        "CD0": 0.0228, "k": 0.0345, "S": 48.5,
+        "MTOW": 17917, "OEW": 10070, "max_fuel": 5897,
+        "TSFC": 1.35e-5, "cruise_mach": 0.840, "cruise_alt": 14326,
+        "seats": 12,
+        "category": "private", "range_nm": 3500, "cost_hr": 4800,
+    },
 }
 
 
