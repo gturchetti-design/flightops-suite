@@ -1002,6 +1002,475 @@ def toggle_priv(clicks, ids, current):
     return sel
 
 
+# ── Private-jet analysis layout ───────────────────────────────────────────────
+def _private_jet_layout(entries, origin, dest, oa, da, dk, dnm, haul, region):
+    """Full analysis panel shown when all selected aircraft are private jets."""
+
+    # Re-sort: nonstop jets first, then cheapest within each group
+    entries = sorted(entries, key=lambda e: (
+        0 if e["ac"].get("range_nm", 0) >= dnm * 1.05 else 1,
+        e["charter_rev"] or 9e9,
+    ))
+    W    = entries[0]
+    W_ac = W["ac"]
+    W_r  = W["result"]
+
+    def _nonstop(e):
+        return e["ac"].get("range_nm", 0) >= dnm * 1.05
+
+    nonstop_n = sum(1 for e in entries if _nonstop(e))
+
+    # ── Banner ────────────────────────────────────────────────────────────────
+    banner = html.Div([
+        html.Div([
+            html.Div([
+                html.Span("PRIVATE CHARTER ANALYSIS",
+                          style={"color": AMBER, "fontSize": "7px", "letterSpacing": "2.5px",
+                                 "fontWeight": "700", "fontFamily": FONT,
+                                 "display": "block", "marginBottom": "4px"}),
+                html.H2(f"{oa['name']} ({origin}) → {da['name']} ({dest})",
+                        style={"color": WHITE, "fontSize": "15px", "fontWeight": "800",
+                               "fontFamily": FONT, "margin": "0 0 4px 0"}),
+                html.P(
+                    f"{region} · {haul} · {dk:,.0f} km · {dnm:,} nm"
+                    f" · Est. {W_r['flight_time_hr']:.1f}h",
+                    style={"color": MUTED, "fontSize": "8px", "letterSpacing": "1.5px",
+                           "textTransform": "uppercase", "fontFamily": FONT, "margin": "0"},
+                ),
+            ], style={"flex": "1"}),
+            html.Div([
+                html.Span(
+                    f"{nonstop_n}/{len(entries)} nonstop capable",
+                    style={"backgroundColor": f"{TEAL}18", "color": TEAL,
+                           "border": f"1px solid {TEAL}45", "borderRadius": "20px",
+                           "padding": "3px 10px", "fontSize": "8px", "fontFamily": FONT},
+                ),
+                html.Span(
+                    f"{len(entries)} jet{'s' if len(entries) > 1 else ''} compared",
+                    style={"backgroundColor": f"{AMBER}18", "color": AMBER,
+                           "border": f"1px solid {AMBER}45", "borderRadius": "20px",
+                           "padding": "3px 10px", "fontSize": "8px", "fontFamily": FONT},
+                ),
+            ], style={"display": "flex", "gap": "8px", "alignItems": "center"}),
+        ], style={"display": "flex", "justifyContent": "space-between",
+                  "alignItems": "flex-start"}),
+    ], style={
+        "backgroundColor": CARD, "border": f"1px solid {BDR}",
+        "borderLeft": f"3px solid {AMBER}", "borderRadius": "4px",
+        "padding": "14px 18px",
+    })
+
+    # ── Jet comparison cards ──────────────────────────────────────────────────
+    def _cabin_class(ac):
+        seats, rng = ac["seats"], ac.get("range_nm", 0)
+        if seats >= 30:   return "VIP Widebody"
+        if rng  >= 7000:  return "Ultra-Long Range"
+        if seats >= 16:   return "Large Cabin"
+        if seats >= 12:   return "Super-Midsize"
+        return "Midsize"
+
+    def _jet_card(idx, e):
+        col  = RANK_C[idx]
+        ac   = e["ac"]
+        rng  = ac.get("range_nm", 0)
+        seats = ac["seats"]
+        flt  = e["result"].get("flight_time_hr", 1)
+        price = e["charter_rev"] or 0
+        cpp   = price / seats if seats else 0
+        cpnm  = price / dnm   if dnm   else 0
+        spare = rng - dnm
+        ok    = _nonstop(e)
+        pct   = min(100, int(dnm / rng * 100)) if rng else 100
+        T, _, _ = isa(ac["cruise_alt"])
+        spd_kts = int(ac["cruise_mach"] * np.sqrt(1.4 * 287.05 * T) * 1.94384)
+        fl      = int(ac["cruise_alt"] * 3.28084 / 100)
+
+        return html.Div([
+            html.Span(RANK_B[idx], style={
+                "backgroundColor": f"{col}20", "color": col,
+                "border": f"1px solid {col}60", "borderRadius": "20px",
+                "padding": "2px 8px", "fontSize": "7px", "fontWeight": "700",
+                "fontFamily": FONT, "display": "inline-block", "marginBottom": "8px",
+            }),
+            html.P(e["name"],
+                   style={"color": WHITE, "fontSize": "10px", "fontWeight": "800",
+                          "fontFamily": FONT, "margin": "0 0 2px 0", "lineHeight": "1.2"}),
+            html.P(f"{_cabin_class(ac)} · {seats} seats",
+                   style={"color": MUTED, "fontSize": "7px",
+                          "fontFamily": FONT, "margin": "0 0 10px 0"}),
+            # Charter price — hero number
+            html.P(f"${price:,.0f}",
+                   style={"color": AMBER, "fontSize": "24px", "fontWeight": "700",
+                          "fontFamily": "'Rajdhani', sans-serif",
+                          "margin": "0 0 1px 0", "lineHeight": "1"}),
+            html.P("charter price est. (incl. broker fees)",
+                   style={"color": MUTED, "fontSize": "6px", "fontFamily": FONT,
+                          "letterSpacing": "0.4px", "margin": "0 0 10px 0"}),
+            # Nonstop badge
+            html.Span(
+                "✓ NONSTOP" if ok else "⚠ FUEL STOP REQUIRED",
+                style={
+                    "backgroundColor": f"{TEAL}15" if ok else f"{RED}15",
+                    "color": TEAL if ok else RED,
+                    "border":  f"1px solid {TEAL}40" if ok else f"1px solid {RED}40",
+                    "borderRadius": "3px", "padding": "2px 8px",
+                    "fontSize": "7px", "fontWeight": "700",
+                    "fontFamily": FONT, "letterSpacing": "1px",
+                },
+            ),
+            # Range utilisation bar
+            html.Div([
+                html.Div(style={
+                    "height": "3px", "backgroundColor": col if ok else RED,
+                    "width": f"{pct}%", "borderRadius": "2px",
+                    "transition": "width .4s",
+                }),
+                html.Div(style={
+                    "height": "3px", "backgroundColor": BDR2,
+                    "width": f"{100 - pct}%", "borderRadius": "2px",
+                }),
+            ], style={"display": "flex", "gap": "1px", "margin": "7px 0 2px 0"}),
+            html.P(
+                f"{pct}% of range used · {spare:,} nm spare" if ok
+                else f"Route exceeds range by {-spare:,} nm",
+                style={"color": MUTED, "fontSize": "6px",
+                       "fontFamily": FONT, "margin": "0 0 10px 0"},
+            ),
+            # Stats grid
+            html.Div([
+                _mini("Flight time",    f"{flt:.1f}h",           LIGHT),
+                _mini("Cost / pax",     f"${cpp:,.0f}",          TEAL),
+                _mini("Cost / nm",      f"${cpnm:.1f}",          BODY),
+                _mini(f"FL{fl} · M{ac['cruise_mach']:.3f}",
+                      f"{spd_kts} kts",                          BODY),
+            ], style={"display": "grid", "gridTemplateColumns": "1fr 1fr",
+                      "gap": "4px"}),
+        ], style={
+            "backgroundColor": CARD, "border": f"1px solid {col}30",
+            "borderTop": f"2px solid {col}", "borderRadius": "4px",
+            "padding": "14px 12px", "flex": "1", "minWidth": "160px",
+        })
+
+    jet_cards = html.Div(
+        [_jet_card(i, e) for i, e in enumerate(entries)],
+        style={"display": "grid",
+               "gridTemplateColumns": f"repeat({len(entries)}, 1fr)",
+               "gap": "10px"},
+    )
+
+    # ── Charter economics table ───────────────────────────────────────────────
+    def _erow(label, vals, highlight=False, val_col=BODY):
+        cells = [
+            html.Td(label, style={"color": BODY, "fontSize": "8px", "fontFamily": FONT,
+                                   "padding": "6px 10px",
+                                   "borderBottom": f"1px solid {BDR}",
+                                   "whiteSpace": "nowrap"}),
+        ]
+        for i, v in enumerate(vals):
+            cells.append(html.Td(v, style={
+                "color": RANK_C[i] if highlight else val_col,
+                "fontSize": "9px", "fontFamily": FONT,
+                "fontWeight": "700" if highlight else "400",
+                "padding": "6px 10px",
+                "borderBottom": f"1px solid {BDR}",
+            }))
+        return html.Tr(cells)
+
+    econ_rows_data = [
+        ("Charter price (est.)",
+         [f"${e['charter_rev']:,.0f}" for e in entries], True, AMBER),
+        ("Base hourly rate",
+         [f"${e['cost_hr_rate']:,.0f}/hr" for e in entries], False, BODY),
+        ("Cost per nm (all-in)",
+         [f"${(e['charter_rev'] or 0)/dnm:.1f}" for e in entries], False, BODY),
+        ("Cost per pax (full cabin)",
+         [f"${(e['charter_rev'] or 0)/e['ac']['seats']:,.0f}" for e in entries],
+         False, TEAL),
+        ("Fuel cost",
+         [f"${e['result'].get('fuel_cost', 0):,.0f}" for e in entries], False, MUTED),
+        ("Fuel burned",
+         [f"{e['result']['fuel_burned_kg']:,.0f} kg" for e in entries], False, MUTED),
+        ("Est. flight time",
+         [f"{e['result']['flight_time_hr']:.1f}h" for e in entries], False, LIGHT),
+        ("Max range",
+         [f"{e['ac'].get('range_nm', 0):,} nm" for e in entries], False, BODY),
+        ("Range remaining",
+         [f"{e['ac'].get('range_nm', 0) - dnm:,} nm" for e in entries], False, TEAL),
+    ]
+
+    econ_hdr = [html.Th("", style={"color": MUTED, "fontSize": "7px", "fontFamily": FONT,
+                                    "padding": "6px 10px", "textTransform": "uppercase",
+                                    "letterSpacing": "1px"})]
+    for i, e in enumerate(entries):
+        short = " ".join(e["name"].split()[-2:])
+        econ_hdr.append(html.Th(short, style={
+            "color": RANK_C[i], "fontSize": "7px",
+            "fontFamily": FONT, "padding": "6px 10px",
+        }))
+
+    econ_table = html.Div([
+        _sec("CHARTER ECONOMICS"),
+        html.P(
+            "Charter price includes estimated broker/operator markup (~38%). "
+            "Hourly rates are published base figures; actual quotes vary by operator, "
+            "season, and positioning fees.",
+            style={"color": MUTED, "fontSize": "7px", "fontFamily": FONT,
+                   "lineHeight": "1.5", "margin": "0 0 10px 0"},
+        ),
+        html.Div(html.Table([
+            html.Thead(html.Tr(econ_hdr)),
+            html.Tbody([_erow(l, v, h, c) for l, v, h, c in econ_rows_data]),
+        ], style={"width": "100%", "borderCollapse": "collapse"}),
+            style={"overflowX": "auto"}),
+    ], style={"backgroundColor": CARD, "border": f"1px solid {BDR}",
+              "borderRadius": "4px", "padding": "14px 16px"})
+
+    # ── Range vs route chart ──────────────────────────────────────────────────
+    range_fig = go.Figure()
+    for i, e in enumerate(entries):
+        rng   = e["ac"].get("range_nm", 0)
+        short = " ".join(e["name"].split()[-2:])
+        range_fig.add_trace(go.Bar(
+            y=[short], x=[rng],
+            orientation="h",
+            marker_color=RANK_C[i],
+            name=short,
+            text=f"  {rng:,} nm",
+            textposition="outside",
+            textfont=dict(size=9, color=RANK_C[i], family=FONT),
+            hovertemplate=(
+                f"<b>{e['name']}</b><br>"
+                f"Range: {rng:,} nm<br>"
+                f"Route: {dnm:,} nm<br>"
+                f"Spare: {rng-dnm:,} nm<extra></extra>"
+            ),
+        ))
+    max_rng = max(e["ac"].get("range_nm", 0) for e in entries)
+    range_fig.add_shape(
+        type="line", x0=dnm, x1=dnm, y0=-0.5, y1=len(entries) - 0.5,
+        line=dict(color=AMBER, width=2, dash="dash"),
+    )
+    range_fig.add_annotation(
+        x=dnm, y=len(entries) - 0.5,
+        text=f"Route: {dnm:,} nm",
+        showarrow=False,
+        font=dict(color=AMBER, size=8, family=FONT),
+        yanchor="bottom", xanchor="left", xshift=6,
+    )
+    range_fig.update_layout(
+        showlegend=False, barmode="overlay",
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        margin=dict(l=10, r=80, t=10, b=10),
+        height=max(80, len(entries) * 44 + 30),
+        xaxis=dict(
+            range=[0, max_rng * 1.15],
+            tickfont=dict(size=8, color=BODY, family=FONT),
+            showgrid=True, gridcolor=BDR,
+            ticksuffix=" nm",
+        ),
+        yaxis=dict(
+            tickfont=dict(size=9, color=LIGHT, family=FONT),
+            showgrid=False,
+        ),
+        font=dict(family=FONT),
+    )
+
+    range_panel = html.Div([
+        _sec("RANGE VS ROUTE DISTANCE"),
+        html.P(
+            "Amber dashed line = this route. A jet must clear it to fly nonstop. "
+            "Longer bars mean more range buffer and flexibility.",
+            style={"color": MUTED, "fontSize": "7px", "fontFamily": FONT,
+                   "margin": "0 0 8px 0"},
+        ),
+        dcc.Graph(figure=range_fig, config={"displayModeBar": False}),
+    ], style={"backgroundColor": CARD, "border": f"1px solid {BDR}",
+              "borderRadius": "4px", "padding": "14px 16px"})
+
+    # ── Flight profile (best-ranked jet) ─────────────────────────────────────
+    mach = W_ac["cruise_mach"]
+    T, _, _ = isa(W_ac["cruise_alt"])
+    spd_kts = int(mach * np.sqrt(1.4 * 287.05 * T) * 1.94384)
+    fl = int(W_ac["cruise_alt"] * 3.28084 / 100)
+
+    profile_items = [
+        ("Cruise speed",        f"Mach {mach:.3f}  ·  {spd_kts} kts TAS",      LIGHT),
+        ("Cruise altitude",     f"FL{fl}  ({int(W_ac['cruise_alt']/0.3048/1000):.0f},000 ft)", LIGHT),
+        ("Est. flight time",    f"{W_r['flight_time_hr']:.1f} h",               TEAL),
+        ("Fuel burned",         f"{W_r['fuel_burned_kg']:,.0f} kg",              BODY),
+        ("Total CO₂",           f"{W_r['co2_kg']:,.0f} kg  ({W_r['co2_kg']/1000:.1f} t)", BODY),
+        ("Cabin capacity",      f"{W_ac['seats']} passengers",                  LIGHT),
+        ("Aerodynamic (L/D)",   f"{W_r['LD_ratio']}",                          MUTED),
+        ("Range on this route", f"{int(W_ac.get('range_nm',0)/dnm*100) if dnm else '—'}% of max range used", MUTED),
+    ]
+
+    profile_panel = html.Div([
+        _sec(f"FLIGHT PROFILE — {W['name'].upper()}"),
+        html.Div([
+            html.Div([
+                html.P(lbl, style={"color": MUTED, "fontSize": "7px",
+                                   "letterSpacing": "1px", "textTransform": "uppercase",
+                                   "fontFamily": FONT, "margin": "0 0 2px 0"}),
+                html.P(val, style={"color": col, "fontSize": "11px", "fontWeight": "700",
+                                   "fontFamily": FONT, "margin": "0"}),
+            ], style={"padding": "8px 14px", "borderRight": f"1px solid {BDR}",
+                      "flex": "1", "minWidth": "140px"})
+            for lbl, val, col in profile_items
+        ], style={"display": "flex", "flexWrap": "wrap",
+                  "borderTop": f"1px solid {BDR}"}),
+    ], style={"backgroundColor": CARD, "border": f"1px solid {BDR}",
+              "borderRadius": "4px", "padding": "14px 16px"})
+
+    # ── CO2 & sustainability ──────────────────────────────────────────────────
+    co2_kg  = W_r["co2_kg"]
+    co2_t   = co2_kg / 1000
+    offset  = co2_t * 20               # $20/tonne REDD+ reference
+    # Equivalent economy passengers: ~0.10 kg CO2 per pax-km
+    equiv   = int(co2_kg / max(dk * 0.10, 1))
+
+    co2_panel = html.Div([
+        _sec("ENVIRONMENTAL FOOTPRINT"),
+        html.Div([
+            html.Div([
+                html.P("Total CO₂ Emitted",
+                       style={"color": MUTED, "fontSize": "7px", "letterSpacing": "1px",
+                              "textTransform": "uppercase", "fontFamily": FONT,
+                              "margin": "0 0 2px 0"}),
+                html.P(f"{co2_kg:,.0f} kg",
+                       style={"color": RED, "fontSize": "20px", "fontWeight": "700",
+                              "fontFamily": "'Rajdhani', sans-serif",
+                              "margin": "0 0 2px 0", "lineHeight": "1"}),
+                html.P(f"{co2_t:.1f} tonnes — entire charter flight",
+                       style={"color": MUTED, "fontSize": "7px",
+                              "fontFamily": FONT, "margin": "0"}),
+            ], style={"flex": "1", "padding": "10px 14px",
+                      "borderRight": f"1px solid {BDR}"}),
+            html.Div([
+                html.P("Carbon Offset Cost (est.)",
+                       style={"color": MUTED, "fontSize": "7px", "letterSpacing": "1px",
+                              "textTransform": "uppercase", "fontFamily": FONT,
+                              "margin": "0 0 2px 0"}),
+                html.P(f"~${offset:,.0f}",
+                       style={"color": AMBER, "fontSize": "20px", "fontWeight": "700",
+                              "fontFamily": "'Rajdhani', sans-serif",
+                              "margin": "0 0 2px 0", "lineHeight": "1"}),
+                html.P("at $20 / tonne (REDD+ reference rate)",
+                       style={"color": MUTED, "fontSize": "7px",
+                              "fontFamily": FONT, "margin": "0"}),
+            ], style={"flex": "1", "padding": "10px 14px",
+                      "borderRight": f"1px solid {BDR}"}),
+            html.Div([
+                html.P("Commercial Equivalent",
+                       style={"color": MUTED, "fontSize": "7px", "letterSpacing": "1px",
+                              "textTransform": "uppercase", "fontFamily": FONT,
+                              "margin": "0 0 2px 0"}),
+                html.P(f"~{equiv} seats",
+                       style={"color": BODY, "fontSize": "20px", "fontWeight": "700",
+                              "fontFamily": "'Rajdhani', sans-serif",
+                              "margin": "0 0 2px 0", "lineHeight": "1"}),
+                html.P("economy passengers at same CO₂ (0.10 kg/pax-km)",
+                       style={"color": MUTED, "fontSize": "7px",
+                              "fontFamily": FONT, "margin": "0"}),
+            ], style={"flex": "1", "padding": "10px 14px"}),
+        ], style={"display": "flex"}),
+    ], style={"backgroundColor": CARD, "border": f"1px solid {BDR}",
+              "borderRadius": "4px", "padding": "14px 16px"})
+
+    # ── Recommendation block ──────────────────────────────────────────────────
+    best_val = min(entries, key=lambda e: (e["charter_rev"] or 9e9) / max(dnm, 1))
+    best_rng = max(entries, key=lambda e: e["ac"].get("range_nm", 0) - dnm)
+    best_cab = max(entries, key=lambda e: e["ac"]["seats"])
+
+    def _rec_block(accent, tag, name, detail):
+        return html.Div([
+            html.P(tag,  style={"color": accent, "fontSize": "7px", "letterSpacing": "1.5px",
+                                "textTransform": "uppercase", "fontFamily": FONT,
+                                "margin": "0 0 4px 0"}),
+            html.P(name, style={"color": WHITE, "fontSize": "10px", "fontWeight": "700",
+                                "fontFamily": FONT, "margin": "0 0 2px 0"}),
+            html.P(detail, style={"color": BODY, "fontSize": "8px",
+                                  "fontFamily": FONT, "margin": "0"}),
+        ], style={"flex": "1", "padding": "12px 16px",
+                  "backgroundColor": BG, "borderLeft": f"3px solid {accent}",
+                  "borderRadius": "3px"})
+
+    rec = html.Div([
+        html.Div([
+            html.Span("◈ ", style={"color": AMBER, "fontSize": "13px"}),
+            html.Span("FlightOps Charter Recommendation",
+                      style={"color": WHITE, "fontSize": "12px",
+                             "fontWeight": "700", "fontFamily": FONT}),
+        ], style={"marginBottom": "12px"}),
+        html.Div([
+            _rec_block(
+                AMBER, "Best Value",
+                best_val["name"],
+                f"${(best_val['charter_rev'] or 0)/dnm:.1f}/nm · "
+                f"${best_val['charter_rev']:,.0f} total",
+            ),
+            _rec_block(
+                TEAL, "Most Range Margin",
+                best_rng["name"],
+                f"{best_rng['ac'].get('range_nm',0)-dnm:,} nm remaining · "
+                f"safest nonstop option",
+            ),
+            _rec_block(
+                PURPLE, "Largest Cabin",
+                best_cab["name"],
+                f"{best_cab['ac']['seats']} seats · "
+                f"most space & flexibility for your party",
+            ),
+        ], style={"display": "flex", "gap": "8px", "flexWrap": "wrap"}),
+        html.P(
+            "⚠ Charter prices are estimates based on published hourly rates plus a 38% "
+            "broker/operator markup. Actual quotes depend on availability, positioning, "
+            "catering, and trip-specific fees. Request a formal quote from a licensed charter broker.",
+            style={"color": MUTED, "fontSize": "7px", "fontFamily": FONT,
+                   "lineHeight": "1.5", "margin": "14px 0 0 0"},
+        ),
+    ], style={
+        "backgroundColor": CARD, "border": f"1px solid {BDR}",
+        "borderLeft": f"3px solid {AMBER}", "borderRadius": "4px",
+        "padding": "16px 18px",
+    })
+
+    # ── Route map ─────────────────────────────────────────────────────────────
+    mid_lat = (oa["lat"] + da["lat"]) / 2
+    mid_lon = (oa["lon"] + da["lon"]) / 2
+    fmap = folium.Map(
+        location=[mid_lat, mid_lon], zoom_start=3,
+        tiles="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+        attr="CartoDB", prefer_canvas=True,
+    )
+    folium.PolyLine(W_r["waypoints"], color=AMBER, weight=2.5, opacity=0.9).add_to(fmap)
+    for code_ap, ap in [(origin, oa), (dest, da)]:
+        folium.CircleMarker(
+            location=[ap["lat"], ap["lon"]], radius=6,
+            color=AMBER, fill=True, fill_color=AMBER, fill_opacity=1.0,
+            tooltip=ap["name"] + " (" + code_ap + ")",
+        ).add_to(fmap)
+
+    globe = html.Div([
+        _sec("ROUTE MAP"),
+        html.Iframe(srcDoc=fmap._repr_html_(),
+                    style={"width": "100%", "height": "300px",
+                           "border": f"1px solid {BDR}", "borderRadius": "4px"}),
+    ])
+
+    return html.Div([
+        banner,
+        jet_cards,
+        econ_table,
+        range_panel,
+        profile_panel,
+        co2_panel,
+        rec,
+        globe,
+    ], style={"display": "flex", "flexDirection": "column", "gap": "12px",
+              "padding": "20px 24px"})
+
+
 # ── Main analysis ─────────────────────────────────────────────────────────────
 @app.callback(
     Output("az-main", "children"),
@@ -1115,6 +1584,9 @@ def run_analysis(n, origin, dest, comm_sel, priv_sel,
     dnm  = round(dk * 0.539957)
     haul = ("Long Haul" if dk > 5000 else "Medium Haul" if dk > 2000 else "Short Haul")
     region = "Transatlantic" if dk > 5000 else ("Long-haul" if dk > 3000 else "Medium-haul")
+
+    if all(e["is_priv"] for e in entries):
+        return _private_jet_layout(entries, origin, dest, oa, da, dk, dnm, haul, region)
 
     # ── Route banner (border-left 3px teal) ───────────────────────────────────
     banner = html.Div([
