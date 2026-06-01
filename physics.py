@@ -152,6 +152,63 @@ AIRCRAFT = {
         "TSFC": 2.40e-5, "cruise_mach": 1.700, "cruise_alt": 18000,
         "seats": 65,
     },
+    # ── MODERN ADDITIONS ────────────────────────────────────────
+    # Airbus A321XLR — 2024 entry, rear centre tank, 4,700 nm range
+    "Airbus A321XLR": {
+        "CD0": 0.0249, "k": 0.0369, "S": 122.6,
+        "MTOW": 101000, "OEW": 52500, "max_fuel": 46040,
+        "TSFC": 1.47e-5, "cruise_mach": 0.780, "cruise_alt": 12100,
+        "seats": 200,
+    },
+    # Airbus A220-100 — smaller A220, 108-seat regional/thin-route
+    "Airbus A220-100": {
+        "CD0": 0.0244, "k": 0.0364, "S": 104.4,
+        "MTOW": 63100, "OEW": 35500, "max_fuel": 21805,
+        "TSFC": 1.47e-5, "cruise_mach": 0.820, "cruise_alt": 12500,
+        "seats": 108,
+    },
+    # Airbus A350-1000 — XWB-97 engines, 369-seat ultra-long-haul flagship
+    "Airbus A350-1000": {
+        "CD0": 0.0198, "k": 0.0315, "S": 442.0,
+        "MTOW": 316000, "OEW": 155000, "max_fuel": 158700,
+        "TSFC": 1.35e-5, "cruise_mach": 0.850, "cruise_alt": 13100,
+        "seats": 369,
+    },
+    # Boeing 737 MAX 8 — highest-volume MAX variant, CFM LEAP-1B
+    "Boeing 737 MAX 8": {
+        "CD0": 0.0248, "k": 0.0365, "S": 125.0,
+        "MTOW": 82191, "OEW": 41145, "max_fuel": 25816,
+        "TSFC": 1.48e-5, "cruise_mach": 0.785, "cruise_alt": 12500,
+        "seats": 162,
+    },
+    # Boeing 737 MAX 10 — longest MAX, up to 230 seats
+    "Boeing 737 MAX 10": {
+        "CD0": 0.0248, "k": 0.0365, "S": 125.0,
+        "MTOW": 89765, "OEW": 45070, "max_fuel": 25816,
+        "TSFC": 1.46e-5, "cruise_mach": 0.785, "cruise_alt": 12500,
+        "seats": 204,
+    },
+    # Boeing 787-8 — shorter 787, 242 seats, mid-haul widebody
+    "Boeing 787-8": {
+        "CD0": 0.0212, "k": 0.0342, "S": 325.0,
+        "MTOW": 227930, "OEW": 118000, "max_fuel": 101000,
+        "TSFC": 1.44e-5, "cruise_mach": 0.850, "cruise_alt": 13100,
+        "seats": 242,
+    },
+    # Boeing 787-10 — stretched 787, 330 seats, highest-capacity Dreamliner
+    "Boeing 787-10": {
+        "CD0": 0.0208, "k": 0.0338, "S": 325.0,
+        "MTOW": 254011, "OEW": 135000, "max_fuel": 126920,
+        "TSFC": 1.40e-5, "cruise_mach": 0.850, "cruise_alt": 13100,
+        "seats": 330,
+    },
+    # Comac C919 — Chinese single-aisle, CFM LEAP-1C, direct A320neo rival
+    "Comac C919": {
+        "CD0": 0.0252, "k": 0.0370, "S": 128.0,
+        "MTOW": 77300, "OEW": 41000, "max_fuel": 19156,
+        "TSFC": 1.55e-5, "cruise_mach": 0.785, "cruise_alt": 12100,
+        "seats": 158,
+    },
     # ── BUSINESS & PRIVATE JETS ─────────────────────────────────
     "Gulfstream G700": {
         "CD0": 0.0210, "k": 0.0320, "S": 170.0,
@@ -208,6 +265,84 @@ AIRCRAFT = {
         "TSFC": 1.35e-5, "cruise_mach": 0.840, "cruise_alt": 14326,
         "seats": 12,
         "category": "private", "range_nm": 3500, "cost_hr": 4800,
+    },
+    # ── ADDITIONAL PRIVATE & BUSINESS JETS ──────────────────
+    "Cessna Citation XLS+": {
+        "CD0": 0.0252, "k": 0.0368, "S": 28.1,
+        "MTOW": 9163,  "OEW": 5625,  "max_fuel": 3022,
+        "TSFC": 1.55e-5, "cruise_mach": 0.750, "cruise_alt": 13716,
+        "seats": 9,
+        "category": "private", "range_nm": 2100, "cost_hr": 2800,
+    },
+    "Cessna Citation Sovereign+": {
+        "CD0": 0.0240, "k": 0.0358, "S": 35.5,
+        "MTOW": 13381, "OEW": 7616,  "max_fuel": 4580,
+        "TSFC": 1.45e-5, "cruise_mach": 0.800, "cruise_alt": 14326,
+        "seats": 9,
+        "category": "private", "range_nm": 3200, "cost_hr": 3200,
+    },
+    "Bombardier Challenger 350": {
+        "CD0": 0.0250, "k": 0.0360, "S": 56.2,
+        "MTOW": 17655, "OEW": 9815,  "max_fuel": 5900,
+        "TSFC": 1.42e-5, "cruise_mach": 0.830, "cruise_alt": 13716,
+        "seats": 10,
+        "category": "private", "range_nm": 3200, "cost_hr": 4000,
+    },
+    "Bombardier Challenger 650": {
+        "CD0": 0.0245, "k": 0.0355, "S": 80.3,
+        "MTOW": 21863, "OEW": 12293, "max_fuel": 8200,
+        "TSFC": 1.40e-5, "cruise_mach": 0.870, "cruise_alt": 12497,
+        "seats": 12,
+        "category": "private", "range_nm": 4000, "cost_hr": 5500,
+    },
+    "Bombardier Global 6500": {
+        "CD0": 0.0208, "k": 0.0320, "S": 150.0,
+        "MTOW": 46049, "OEW": 23600, "max_fuel": 18025,
+        "TSFC": 1.27e-5, "cruise_mach": 0.900, "cruise_alt": 15545,
+        "seats": 17,
+        "category": "private", "range_nm": 6600, "cost_hr": 11000,
+    },
+    "Dassault Falcon 2000LXS": {
+        "CD0": 0.0218, "k": 0.0330, "S": 70.3,
+        "MTOW": 19415, "OEW": 10280, "max_fuel": 7130,
+        "TSFC": 1.32e-5, "cruise_mach": 0.862, "cruise_alt": 14326,
+        "seats": 12,
+        "category": "private", "range_nm": 4000, "cost_hr": 7500,
+    },
+    "Dassault Falcon 8X": {
+        "CD0": 0.0208, "k": 0.0318, "S": 90.0,
+        "MTOW": 33113, "OEW": 16575, "max_fuel": 12000,
+        "TSFC": 1.28e-5, "cruise_mach": 0.900, "cruise_alt": 15545,
+        "seats": 16,
+        "category": "private", "range_nm": 6450, "cost_hr": 12000,
+    },
+    "Embraer Praetor 600": {
+        "CD0": 0.0242, "k": 0.0355, "S": 72.7,
+        "MTOW": 16966, "OEW": 10342, "max_fuel": 5590,
+        "TSFC": 1.38e-5, "cruise_mach": 0.830, "cruise_alt": 13716,
+        "seats": 12,
+        "category": "private", "range_nm": 4018, "cost_hr": 4500,
+    },
+    "Gulfstream G280": {
+        "CD0": 0.0230, "k": 0.0340, "S": 50.4,
+        "MTOW": 20200, "OEW": 11700, "max_fuel": 6700,
+        "TSFC": 1.35e-5, "cruise_mach": 0.850, "cruise_alt": 13716,
+        "seats": 10,
+        "category": "private", "range_nm": 3600, "cost_hr": 4200,
+    },
+    "Gulfstream G550": {
+        "CD0": 0.0215, "k": 0.0325, "S": 105.6,
+        "MTOW": 41277, "OEW": 22588, "max_fuel": 14865,
+        "TSFC": 1.30e-5, "cruise_mach": 0.885, "cruise_alt": 15545,
+        "seats": 18,
+        "category": "private", "range_nm": 6750, "cost_hr": 8500,
+    },
+    "Gulfstream G600": {
+        "CD0": 0.0212, "k": 0.0322, "S": 120.0,
+        "MTOW": 44452, "OEW": 23814, "max_fuel": 16375,
+        "TSFC": 1.28e-5, "cruise_mach": 0.900, "cruise_alt": 15545,
+        "seats": 19,
+        "category": "private", "range_nm": 6500, "cost_hr": 9500,
     },
 }
 

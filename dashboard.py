@@ -80,7 +80,7 @@ TEAL    = "#00d4aa"
 PURPLE  = "#a064f0"
 AMBER   = "#f0b830"
 RED     = "#f04040"
-MUTED   = "#4a6080"
+MUTED   = "#607898"
 DIM     = "#2d4060"
 BODY    = "#8899aa"
 LIGHT   = "#c8d8e8"
@@ -136,8 +136,18 @@ _EUR_USD = 1.08
 _ETS_EUR_PER_TONNE = 65.0
 
 # ── Aircraft split ────────────────────────────────────────────────────────────
-COMMERCIAL = {n: ac for n, ac in AIRCRAFT.items() if ac.get("category") != "private"}
-PRIVATE    = {n: ac for n, ac in AIRCRAFT.items() if ac.get("category") == "private"}
+def _mfr_key(name: str) -> str:
+    return {"Boeing":"1","Airbus":"2","Embraer":"3","Bombardier":"4","ATR":"5",
+            "Gulfstream":"6","Dassault":"7","Cessna":"8","Comac":"9"}.get(name.split()[0], "Z")
+
+COMMERCIAL = dict(sorted(
+    {n: ac for n, ac in AIRCRAFT.items() if ac.get("category") != "private"}.items(),
+    key=lambda kv: (_mfr_key(kv[0]), kv[1]["seats"]),
+))
+PRIVATE = dict(sorted(
+    {n: ac for n, ac in AIRCRAFT.items() if ac.get("category") == "private"}.items(),
+    key=lambda kv: (_mfr_key(kv[0]), kv[1]["seats"]),
+))
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -164,13 +174,13 @@ def get_dist(origin: str, dest: str):
 
 
 def _lbl(text: str) -> html.P:
-    return html.P(text, style={"color": DIM, "fontSize": "7px", "fontWeight": "500",
+    return html.P(text, style={"color": BODY, "fontSize": "7px", "fontWeight": "500",
                                "letterSpacing": "2px", "textTransform": "uppercase",
                                "fontFamily": FONT, "margin": "0 0 3px 0"})
 
 
 def _sec(text: str) -> html.P:
-    return html.P(text, style={"color": DIM, "fontSize": "7px", "letterSpacing": "2.5px",
+    return html.P(text, style={"color": BODY, "fontSize": "7px", "letterSpacing": "2.5px",
                                "textTransform": "uppercase", "fontFamily": FONT,
                                "borderBottom": f"1px solid {BDR}",
                                "paddingBottom": "4px", "margin": "0 0 8px 0"})
@@ -178,7 +188,7 @@ def _sec(text: str) -> html.P:
 
 def _mini(label: str, value: str, color=WHITE) -> html.Div:
     return html.Div([
-        html.P(label, style={"color": DIM, "fontSize": "6px", "letterSpacing": "1px",
+        html.P(label, style={"color": MUTED, "fontSize": "6px", "letterSpacing": "1px",
                              "textTransform": "uppercase", "fontFamily": FONT,
                              "margin": "0 0 3px 0"}),
         html.P(value, style={"color": color, "fontSize": "11px", "fontWeight": "700",
@@ -405,6 +415,17 @@ _LIST_PRICE = {
     "Boeing BBJ 737 MAX":    "$100M",
     "Embraer Lineage 1000E": "$53M",
     "Cessna Citation Longitude": "$27M",
+    "Cessna Citation XLS+":      "$13M",
+    "Cessna Citation Sovereign+":"$18M",
+    "Bombardier Challenger 350": "$27M",
+    "Bombardier Challenger 650": "$32M",
+    "Bombardier Global 6500":    "$52M",
+    "Dassault Falcon 2000LXS":   "$36M",
+    "Dassault Falcon 8X":        "$58M",
+    "Embraer Praetor 600":       "$21M",
+    "Gulfstream G280":           "$25M",
+    "Gulfstream G550":           "$62M",
+    "Gulfstream G600":           "$57M",
 }
 
 _COMM_ROWS = []
@@ -530,20 +551,20 @@ def home_layout() -> html.Div:
                             "borderRadius": "2px 2px 0 0"}),
             html.Div([
                 html.Span(icon, style={
-                    "fontSize": "18px", "color": accent,
+                    "fontSize": "22px", "color": accent,
                     "backgroundColor": f"{accent}14",
                     "border": f"1px solid {accent}30",
-                    "padding": "6px", "borderRadius": "4px",
-                    "marginBottom": "10px", "display": "inline-block",
+                    "padding": "8px", "borderRadius": "4px",
+                    "marginBottom": "14px", "display": "inline-block",
                 }),
-                html.P(title, style={"color": WHITE, "fontSize": "11px", "fontWeight": "800",
+                html.P(title, style={"color": WHITE, "fontSize": "13px", "fontWeight": "800",
                                      "letterSpacing": "2px", "textTransform": "uppercase",
-                                     "fontFamily": FONT, "margin": "0 0 6px 0"}),
-                html.P(desc, style={"color": MUTED, "fontSize": "10px", "lineHeight": "1.6",
-                                    "fontFamily": FONT, "margin": "0 0 10px 0"}),
-                html.Span(cta_text, style={"color": accent, "fontSize": "10px",
+                                     "fontFamily": FONT, "margin": "0 0 8px 0"}),
+                html.P(desc, style={"color": MUTED, "fontSize": "12px", "lineHeight": "1.65",
+                                    "fontFamily": FONT, "margin": "0 0 14px 0"}),
+                html.Span(cta_text, style={"color": accent, "fontSize": "12px",
                                            "fontWeight": "700", "fontFamily": FONT}),
-            ], style={"padding": "16px"}),
+            ], style={"padding": "20px"}),
         ], style={"backgroundColor": CARD, "border": f"1px solid {BDR}",
                   "borderRadius": "4px", "overflow": "hidden"}),
         href=href, style={"textDecoration": "none"})
@@ -553,61 +574,61 @@ def home_layout() -> html.Div:
         html.Div([
             # Eyebrow
             html.Span("Aviation Route Intelligence",
-                      style={"color": TEAL, "fontSize": "10px", "fontWeight": "700",
+                      style={"color": TEAL, "fontSize": "12px", "fontWeight": "700",
                              "letterSpacing": "3px", "textTransform": "uppercase",
                              "fontFamily": FONT, "display": "block",
-                             "marginBottom": "20px"}),
+                             "marginBottom": "24px"}),
             # Title
             html.H1([
                 html.Span("FLIGHT", style={"color": WHITE}),
                 html.Span("OPS",    style={"color": TEAL}),
                 html.Span(" SUITE", style={"color": WHITE}),
             ], style={"fontFamily": "'Rajdhani', sans-serif", "fontWeight": "900",
-                      "fontSize": "58px", "letterSpacing": "-2px",
-                      "margin": "0 0 20px 0", "lineHeight": "1"}),
-            # Tagline — short, punchy
+                      "fontSize": "76px", "letterSpacing": "-2px",
+                      "margin": "0 0 24px 0", "lineHeight": "1"}),
+            # Tagline
             html.P(
                 "Model any route. Compare any fleet. Make the call with data.",
-                style={"color": LIGHT, "fontSize": "16px", "maxWidth": "460px",
-                       "lineHeight": "1.5", "fontFamily": FONT,
-                       "margin": "0 auto 10px auto", "textAlign": "center",
+                style={"color": LIGHT, "fontSize": "22px", "maxWidth": "540px",
+                       "lineHeight": "1.45", "fontFamily": FONT,
+                       "margin": "0 auto 14px auto", "textAlign": "center",
                        "fontWeight": "500"}
             ),
             html.P(
-                "Built for airline strategists, fleet planners, and anyone who needs "
-                "real numbers — not rules of thumb.",
-                style={"color": BODY, "fontSize": "12px", "maxWidth": "420px",
-                       "lineHeight": "1.6", "fontFamily": FONT,
-                       "margin": "0 auto 36px auto", "textAlign": "center"}
+                "Built for airline strategists and fleet planners who need "
+                "real numbers, not rules of thumb.",
+                style={"color": BODY, "fontSize": "15px", "maxWidth": "460px",
+                       "lineHeight": "1.65", "fontFamily": FONT,
+                       "margin": "0 auto 44px auto", "textAlign": "center"}
             ),
             # CTA cards
             html.Div([
                 _cta(TEAL,   "◈", "ROUTE ANALYZER",
-                     "Pick any city pair, choose your aircraft, and get a full cost and "
-                     "revenue breakdown in seconds.",
+                     "Pick any city pair, select your aircraft, "
+                     "and get a full cost and revenue breakdown in seconds.",
                      "Open Analyzer →", "/analyzer"),
                 _cta(PURPLE, "▦", "FLEET INTELLIGENCE",
-                     "Browse every commercial and private aircraft side by side — "
-                     "cost per seat, range, emissions, and best-fit routes.",
+                     "Browse every commercial and private aircraft side by side. "
+                     "Cost per seat, range, emissions, and best-fit routes.",
                      "Explore Fleet →", "/fleet"),
             ], style={"display": "grid", "gridTemplateColumns": "1fr 1fr",
-                      "gap": "16px", "maxWidth": "560px", "margin": "0 auto"}),
+                      "gap": "20px", "maxWidth": "640px", "margin": "0 auto"}),
         ], style={
             "position": "relative", "zIndex": "2",
             "display": "flex", "flexDirection": "column",
             "alignItems": "center", "justifyContent": "center",
             "textAlign": "center",
-            "minHeight": "calc(100vh - 110px)", "padding": "40px 24px",
+            "minHeight": "calc(100vh - 110px)", "padding": "48px 32px",
         }),
         # Footer
         html.Div([
-            html.Span("28 aircraft · 100 airports · real physics engine",
-                      style={"color": DIM, "fontSize": "9px", "fontFamily": FONT}),
+            html.Span("47 aircraft · 100 airports · real physics engine",
+                      style={"color": DIM, "fontSize": "10px", "fontFamily": FONT}),
             html.Span("G. Turchetti · Illinois Institute of Technology",
-                      style={"color": "#1a2535", "fontSize": "8px", "fontFamily": FONT}),
+                      style={"color": "#1a2535", "fontSize": "9px", "fontFamily": FONT}),
         ], style={
             "position": "relative", "zIndex": "2",
-            "borderTop": f"1px solid {BDR}", "padding": "12px 36px",
+            "borderTop": f"1px solid {BDR}", "padding": "14px 40px",
             "display": "flex", "justifyContent": "space-between",
         }),
     ], style={"position": "relative", "overflow": "hidden",
@@ -647,7 +668,7 @@ _COND_PRIV = [
 
 def _wchip(label, value, color):
     return html.Div([
-        html.Span(label, style={"color": DIM, "fontSize": "6px", "letterSpacing": "1.5px",
+        html.Span(label, style={"color": MUTED, "fontSize": "6px", "letterSpacing": "1.5px",
                                 "textTransform": "uppercase", "fontFamily": FONT,
                                 "display": "block", "marginBottom": "3px"}),
         html.Span(value, style={"color": color, "fontSize": "9px",
@@ -665,7 +686,7 @@ def fleet_layout() -> html.Div:
                 style={"color": WHITE, "fontFamily": "'Rajdhani', sans-serif",
                        "fontWeight": "900", "fontSize": "20px", "margin": "0 0 4px 0"}),
         html.P("Full fleet · Commercial & Private",
-               style={"color": DIM, "fontSize": "8px", "letterSpacing": "2px",
+               style={"color": MUTED, "fontSize": "8px", "letterSpacing": "2px",
                       "textTransform": "uppercase", "fontFamily": FONT,
                       "margin": "0 0 20px 0"}),
 
@@ -748,11 +769,11 @@ analyzer_sidebar = html.Div([
 
     # ── Commercial aircraft chips ─────────────────────────────────────────────
     html.P("COMMERCIAL AIRCRAFT",
-           style={"color": DIM, "fontSize": "8px", "letterSpacing": "2.5px",
+           style={"color": MUTED, "fontSize": "8px", "letterSpacing": "2.5px",
                   "textTransform": "uppercase", "fontFamily": FONT, "margin": "0 0 2px 0"}),
     html.P("Capable of completing this route",
            style={"color": BDR2, "fontSize": "7px", "fontFamily": FONT, "margin": "0 0 6px 0"}),
-    dcc.Store(id="selected-comm", data=["Boeing 787-9"]),
+    dcc.Store(id="selected-comm", data=[]),
     dcc.Store(id="selected-priv", data=[]),
     html.Div(id="comm-chips-container"),
 
@@ -760,7 +781,7 @@ analyzer_sidebar = html.Div([
 
     # ── Private jets chips ────────────────────────────────────────────────────
     html.P("BUSINESS & PRIVATE JETS",
-           style={"color": DIM, "fontSize": "8px", "letterSpacing": "2.5px",
+           style={"color": MUTED, "fontSize": "8px", "letterSpacing": "2.5px",
                   "textTransform": "uppercase", "fontFamily": FONT, "margin": "0 0 2px 0"}),
     html.P("Ultra long-range capable",
            style={"color": BDR2, "fontSize": "7px", "fontFamily": FONT, "margin": "0 0 6px 0"}),
@@ -959,7 +980,7 @@ def toggle_comm(clicks, ids, current):
         sel.remove(name)
     elif len(sel) < 4:
         sel.append(name)
-    return sel or ["Boeing 787-9"]
+    return sel
 
 
 @app.callback(
@@ -1003,7 +1024,16 @@ def run_analysis(n, origin, dest, comm_sel, priv_sel,
 
     selected = (list(comm_sel or []) + list(priv_sel or []))[:4]
     if not selected:
-        selected = ["Boeing 787-9"]
+        return html.Div([
+            html.P("No aircraft selected",
+                   style={"color": LIGHT, "fontSize": "14px", "fontWeight": "700",
+                          "fontFamily": FONT, "margin": "0 0 8px 0"}),
+            html.P("Select at least one aircraft from the sidebar before clicking Analyze Route.",
+                   style={"color": MUTED, "fontSize": "10px", "fontFamily": FONT,
+                          "margin": "0"}),
+        ], style={"backgroundColor": CARD, "border": f"1px solid {BDR}",
+                  "borderRadius": "4px", "padding": "40px", "textAlign": "center",
+                  "marginTop": "40px"})
 
     oa, da = AIRPORTS[origin], AIRPORTS[dest]
 
@@ -1015,21 +1045,47 @@ def run_analysis(n, origin, dest, comm_sel, priv_sel,
         except Exception:
             continue
         ac      = AIRCRAFT[name]
+        is_priv = ac.get("category") == "private"
         is_free = r.get("is_freighter", False)
-        casm    = r.get("casm_cents")    or 0.0
-        rasm    = r.get("rasm_cents")    or 0.0
-        margin  = r.get("op_margin_pct") or 0.0
-        profit  = r.get("op_profit")     or 0.0
-        co2pax  = (round(r["co2_kg"] / r["passengers"], 1)
-                   if not is_free and r.get("passengers", 0) > 0 else 0)
+
+        if is_priv:
+            # Charter economics — ticket/seat model doesn't apply to private jets
+            cost_hr_rate   = ac.get("cost_hr", 10000)
+            flt_hr         = r.get("flight_time_hr", 1)
+            charter_cost   = cost_hr_rate * flt_hr          # operator cost
+            charter_rev    = charter_cost * 1.38            # typical charter markup ~38%
+            charter_profit = charter_rev - charter_cost
+            charter_margin = 27.5                           # fixed charter margin ~27.5%
+            fuel_c         = r.get("fuel_cost", 0)
+            dist_nm        = r["distance_km"] * 0.539957 or 1
+            cost_per_nm    = charter_cost / dist_nm
+            casm = rasm = 0.0
+            margin  = charter_margin
+            profit  = charter_profit
+            co2pax  = round(r["co2_kg"], 1)                # total CO2, not per pax
+        else:
+            cost_hr_rate = charter_cost = charter_rev = charter_profit = cost_per_nm = None
+            casm    = r.get("casm_cents")    or 0.0
+            rasm    = r.get("rasm_cents")    or 0.0
+            margin  = r.get("op_margin_pct") or 0.0
+            profit  = r.get("op_profit")     or 0.0
+            co2pax  = (round(r["co2_kg"] / r["passengers"], 1)
+                       if not is_free and r.get("passengers", 0) > 0 else 0)
+
         v = compute_viability_score(r)
         entries.append({
-            "name": name, "result": r, "ac": ac, "is_free": is_free,
+            "name": name, "result": r, "ac": ac,
+            "is_free": is_free, "is_priv": is_priv,
             "casm": casm, "rasm": rasm, "margin": margin,
             "profit": profit, "co2pax": co2pax,
             "score": v.get("total_score") or 0,
             "verdict": v.get("verdict", "N/A"),
             "viability": v,
+            # private jet extras
+            "cost_hr_rate":   cost_hr_rate,
+            "charter_cost":   charter_cost,
+            "charter_rev":    charter_rev,
+            "cost_per_nm":    cost_per_nm,
         })
 
     if not entries:
@@ -1075,15 +1131,35 @@ def run_analysis(n, origin, dest, comm_sel, priv_sel,
             ),
         ], style={"flex": "1"}),
         html.Div([
-            html.Span(f"{dnm:,} nm",
-                      style={"backgroundColor": BDR2, "color": LIGHT, "borderRadius": "20px",
-                             "padding": "3px 10px", "fontSize": "8px",
-                             "fontFamily": FONT, "marginRight": "6px"}),
-            html.Span(f"Viability {W['score']}/100",
-                      style={"backgroundColor": f"{TEAL}20", "color": TEAL,
-                             "border": f"1px solid {TEAL}50", "borderRadius": "20px",
-                             "padding": "3px 10px", "fontSize": "8px", "fontFamily": FONT}),
-        ], style={"display": "flex", "alignItems": "center"}),
+            html.Div([
+                html.Span(f"{dnm:,} nm",
+                          style={"backgroundColor": BDR2, "color": LIGHT, "borderRadius": "20px",
+                                 "padding": "3px 10px", "fontSize": "8px",
+                                 "fontFamily": FONT, "marginRight": "6px"}),
+                html.Span(
+                    [
+                        f"Viability {W['score']}/100",
+                        html.Span(" ⓘ", title=(
+                            "Viability Score (0–100)\n"
+                            "Financial 40pt — operating margin, RASM/CASM spread, profit per pax\n"
+                            "Operational 25pt — fuel headroom, aerodynamic efficiency (L/D), break-even LF\n"
+                            "ESG 20pt — CO₂/pax vs IATA distance-band benchmarks\n"
+                            "Market fit 15pt — aircraft type vs route distance category"
+                        ), style={"cursor": "help", "color": TEAL,
+                                  "fontSize": "9px", "fontWeight": "700"}),
+                    ],
+                    style={"backgroundColor": f"{TEAL}20", "color": TEAL,
+                           "border": f"1px solid {TEAL}50", "borderRadius": "20px",
+                           "padding": "3px 10px", "fontSize": "8px", "fontFamily": FONT,
+                           "display": "inline-flex", "alignItems": "center", "gap": "2px"}
+                ),
+            ], style={"display": "flex", "alignItems": "center"}),
+            html.P(
+                "40pt Financial · 25pt Operational · 20pt ESG · 15pt Market fit",
+                style={"color": MUTED, "fontSize": "6px", "fontFamily": FONT,
+                       "margin": "4px 0 0 0", "textAlign": "right", "letterSpacing": "0.4px"},
+            ),
+        ], style={"display": "flex", "flexDirection": "column", "alignItems": "flex-end"}),
     ], style={
         "backgroundColor": CARD, "border": f"1px solid {BDR}",
         "borderLeft": "3px solid " + TEAL, "borderRadius": "4px",
@@ -1093,13 +1169,30 @@ def run_analysis(n, origin, dest, comm_sel, priv_sel,
 
     # ── Aircraft score cards ──────────────────────────────────────────────────
     def _score_card(idx: int, d: dict) -> html.Div:
-        col  = RANK_C[idx]
-        r    = d["result"]
-        cat  = ("Private Jet" if d["ac"].get("category") == "private" else
-                _ac_type(d["name"], d["ac"]))
+        col   = RANK_C[idx]
+        r     = d["result"]
+        is_pv = d.get("is_priv", False)
+        cat   = "Private Charter" if is_pv else _ac_type(d["name"], d["ac"])
         seats = d["ac"]["seats"]
+        sub   = f"Private · {seats} seats" if is_pv else f"{cat} · {seats} pax"
+
+        if is_pv:
+            stats = [
+                _mini("Cost/hr",       f"${d['cost_hr_rate']:,}"              if d['cost_hr_rate'] else "—", AMBER),
+                _mini("Charter est.",  f"${d['charter_rev']:,.0f}"            if d['charter_rev']  else "—", TEAL),
+                _mini("Fuel burn",     f"{r['fuel_burned_kg']:,.0f} kg",                                      BODY),
+                _mini("Range",         f"{d['ac'].get('range_nm', 0):,} nm",                                  LIGHT),
+            ]
+        else:
+            stats = [
+                _mini("CASM",      f"{d['casm']:.2f}¢"     if not d["is_free"] else "—", AMBER),
+                _mini("Op.Margin", f"{d['margin']:.1f}%"   if not d["is_free"] else "—",
+                      TEAL if d["margin"] > 0 else RED),
+                _mini("CO₂/pax",   f"{d['co2pax']:.0f} kg" if not d["is_free"] else "—", BODY),
+                _mini("RASM",      f"{d['rasm']:.2f}¢"     if not d["is_free"] else "—", TEAL),
+            ]
+
         return html.Div([
-            # Rank badge
             html.Span(RANK_B[idx], style={
                 "backgroundColor": f"{col}20", "color": col,
                 "border": f"1px solid {col}60", "borderRadius": "20px",
@@ -1109,26 +1202,16 @@ def run_analysis(n, origin, dest, comm_sel, priv_sel,
             html.P(d["name"],
                    style={"color": WHITE, "fontSize": "10px", "fontWeight": "800",
                           "fontFamily": FONT, "margin": "0 0 2px 0", "lineHeight": "1.2"}),
-            html.P(f"{cat} · {seats} pax",
-                   style={"color": MUTED, "fontSize": "7px", "fontFamily": FONT,
-                          "margin": "0 0 10px 0"}),
-            # SVG score circle
+            html.P(sub, style={"color": MUTED, "fontSize": "7px", "fontFamily": FONT,
+                               "margin": "0 0 10px 0"}),
             html.Div(score_circle(d["display_score"], col, 72),
                      style={"margin": "0 auto 10px auto", "width": "72px"}),
-            # 2×2 mini stats: CASM / Op.Margin / CO₂/pax / RASM
-            html.Div([
-                _mini("CASM",      f"{d['casm']:.2f}¢"     if not d["is_free"] else "—", AMBER),
-                _mini("Op.Margin", f"{d['margin']:.1f}%"   if not d["is_free"] else "—",
-                      TEAL if d["margin"] > 0 else RED),
-                _mini("CO₂/pax",   f"{d['co2pax']:.0f} kg" if not d["is_free"] else "—", BODY),
-                _mini("RASM",      f"{d['rasm']:.2f}¢"     if not d["is_free"] else "—", TEAL),
-            ], style={"display": "grid", "gridTemplateColumns": "1fr 1fr", "gap": "4px"}),
+            html.Div(stats, style={"display": "grid", "gridTemplateColumns": "1fr 1fr",
+                                   "gap": "4px"}),
         ], style={
-            "backgroundColor": CARD,
-            "border": f"1px solid {col}30",
-            "borderTop": f"2px solid {col}",
-            "borderRadius": "4px", "padding": "14px 12px",
-            "flex": "1", "minWidth": "160px",
+            "backgroundColor": CARD, "border": f"1px solid {col}30",
+            "borderTop": f"2px solid {col}", "borderRadius": "4px",
+            "padding": "14px 12px", "flex": "1", "minWidth": "160px",
         })
 
     score_cards = html.Div(
@@ -1183,7 +1266,7 @@ def run_analysis(n, origin, dest, comm_sel, priv_sel,
                       "fontWeight": "700" if ib else "400",
                       "padding": "5px 8px",
                       "borderBottom": f"1px solid {BDR}"}))
-        wn = entries[bi]["name"].split()[-1] if bi is not None else "—"
+        wn = " ".join(entries[bi]["name"].split()[1:]) if bi is not None else "—"
         cells.append(html.Td(wn,
                              style={"color": RANK_C[bi] if bi is not None else MUTED,
                                     "fontSize": "7px", "fontFamily": FONT,
@@ -1191,21 +1274,21 @@ def run_analysis(n, origin, dest, comm_sel, priv_sel,
                                     "borderBottom": f"1px solid {BDR}"}))
         return html.Tr(cells)
 
-    hdr_cells = [html.Th("Metric", style={"color": DIM, "fontSize": "7px",
+    hdr_cells = [html.Th("Metric", style={"color": MUTED, "fontSize": "7px",
                                            "fontFamily": FONT, "padding": "6px 8px",
                                            "textTransform": "uppercase",
                                            "letterSpacing": "1px"})]
     for i, d in enumerate(entries):
-        hdr_cells.append(html.Th(d["name"].split()[-1],
+        hdr_cells.append(html.Th(" ".join(d["name"].split()[1:]),
                                  style={"color": RANK_C[i], "fontSize": "7px",
                                         "fontFamily": FONT, "padding": "6px 8px"}))
-    hdr_cells.append(html.Th("Best", style={"color": DIM, "fontSize": "7px",
+    hdr_cells.append(html.Th("Best", style={"color": MUTED, "fontSize": "7px",
                                              "fontFamily": FONT, "padding": "6px 8px"}))
 
     comp = html.Div([
         html.Div("▶  COMPARATIVE METRICS — TECHNICAL ANALYSIS",
                  id="comp-toggle", style={
-                     "color": DIM, "fontSize": "8px", "letterSpacing": "2px",
+                     "color": MUTED, "fontSize": "8px", "letterSpacing": "2px",
                      "textTransform": "uppercase", "fontFamily": FONT,
                      "cursor": "pointer", "padding": "10px 14px",
                      "backgroundColor": CARD, "border": f"1px solid {BDR}",
@@ -1282,10 +1365,10 @@ def run_analysis(n, origin, dest, comm_sel, priv_sel,
             html.Div([
                 score_circle(vscore, vc, 70),
                 html.P("40pt Financial / 25pt Operational",
-                       style={"color": DIM, "fontSize": "7px", "fontFamily": FONT,
+                       style={"color": MUTED, "fontSize": "7px", "fontFamily": FONT,
                               "margin": "6px 0 2px 0", "textAlign": "center"}),
                 html.P("20pt ESG / 15pt Market",
-                       style={"color": DIM, "fontSize": "7px", "fontFamily": FONT,
+                       style={"color": MUTED, "fontSize": "7px", "fontFamily": FONT,
                               "margin": "0", "textAlign": "center"}),
             ], style={"width": "90px", "flexShrink": "0", "display": "flex",
                       "flexDirection": "column", "alignItems": "center"}),
@@ -1399,12 +1482,12 @@ def run_analysis(n, origin, dest, comm_sel, priv_sel,
     # KPI grid
     def _kpi(lbl, val, color=LIGHT, sub=""):
         return html.Div([
-            html.P(lbl, style={"color": DIM, "fontSize": "7px", "letterSpacing": "1px",
+            html.P(lbl, style={"color": MUTED, "fontSize": "7px", "letterSpacing": "1px",
                                "textTransform": "uppercase", "fontFamily": FONT,
                                "margin": "0 0 2px 0"}),
             html.P(val, style={"color": color, "fontSize": "13px", "fontWeight": "700",
                                "fontFamily": FONT, "margin": "0 0 1px 0", "lineHeight": "1"}),
-            html.P(sub, style={"color": DIM, "fontSize": "7px", "fontFamily": FONT, "margin": "0"}),
+            html.P(sub, style={"color": MUTED, "fontSize": "7px", "fontFamily": FONT, "margin": "0"}),
         ], style={"flex": "1", "padding": "10px 12px",
                   "borderRight": f"1px solid {BDR}", "minWidth": "80px"})
 
@@ -1414,13 +1497,13 @@ def run_analysis(n, origin, dest, comm_sel, priv_sel,
         _kpi("Op. Margin",   f"{margin:.1f}%",  prof_col, "net profit / revenue"),
         _kpi("Break-even LF",f"{belf:.1f}%"     if belf else "—", LIGHT, "min load factor"),
         html.Div([
-            html.P("CO₂ / pax", style={"color": DIM, "fontSize": "7px", "letterSpacing": "1px",
+            html.P("CO₂ / pax", style={"color": MUTED, "fontSize": "7px", "letterSpacing": "1px",
                                        "textTransform": "uppercase", "fontFamily": FONT,
                                        "margin": "0 0 2px 0"}),
             html.P(f"{W['co2pax']:.0f} kg" if W["co2pax"] else "—",
                    style={"color": LIGHT, "fontSize": "13px", "fontWeight": "700",
                           "fontFamily": FONT, "margin": "0 0 1px 0", "lineHeight": "1"}),
-            html.P("per passenger", style={"color": DIM, "fontSize": "7px",
+            html.P("per passenger", style={"color": MUTED, "fontSize": "7px",
                                            "fontFamily": FONT, "margin": "0"}),
         ], style={"flex": "1", "padding": "10px 12px", "minWidth": "80px"}),
     ], style={"display": "flex", "borderTop": f"1px solid {BDR}", "flexWrap": "wrap"})
@@ -1428,13 +1511,13 @@ def run_analysis(n, origin, dest, comm_sel, priv_sel,
     # Real Net Profit side-by-side block
     def _profit_box(label, value, color, sub=""):
         return html.Div([
-            html.P(label, style={"color": DIM, "fontSize": "7px", "letterSpacing": "1px",
+            html.P(label, style={"color": MUTED, "fontSize": "7px", "letterSpacing": "1px",
                                  "textTransform": "uppercase", "fontFamily": FONT,
                                  "margin": "0 0 4px 0"}),
             html.P(f"${value:,.0f}", style={"color": color, "fontSize": "18px",
                                              "fontWeight": "700", "fontFamily": FONT,
                                              "margin": "0 0 4px 0", "lineHeight": "1"}),
-            html.P(sub, style={"color": DIM, "fontSize": "7px",
+            html.P(sub, style={"color": MUTED, "fontSize": "7px",
                                "fontFamily": FONT, "margin": "0"}),
         ], style={"flex": "1", "padding": "14px 16px", "textAlign": "center",
                   "backgroundColor": BG, "borderRadius": "4px",
@@ -1465,7 +1548,7 @@ def run_analysis(n, origin, dest, comm_sel, priv_sel,
         ], style={"display": "flex", "alignItems": "stretch", "gap": "8px",
                   "marginBottom": "12px"}),
         html.Div([
-            html.P("Deductions applied:", style={"color": DIM, "fontSize": "7px",
+            html.P("Deductions applied:", style={"color": MUTED, "fontSize": "7px",
                                                   "letterSpacing": "1px", "textTransform": "uppercase",
                                                   "fontFamily": FONT, "margin": "0 0 6px 0"}),
             *extra_rows,
@@ -1483,7 +1566,7 @@ def run_analysis(n, origin, dest, comm_sel, priv_sel,
             "Leasing rates vary by contract, operator, and aircraft age. "
             "EU ETS applied when both airports are within the European Emissions Trading Scheme. "
             "Use for directional analysis only — not a substitute for actual airline accounting.",
-            style={"color": DIM, "fontSize": "7px", "fontFamily": FONT,
+            style={"color": MUTED, "fontSize": "7px", "fontFamily": FONT,
                    "lineHeight": "1.5", "margin": "0"},
         ),
     ])
@@ -1492,13 +1575,13 @@ def run_analysis(n, origin, dest, comm_sel, priv_sel,
         _sec("ECONOMIC ANALYSIS"),
         html.Div([
             html.Div([
-                html.P("Cost structure", style={"color": DIM, "fontSize": "7px",
+                html.P("Cost structure", style={"color": MUTED, "fontSize": "7px",
                                                 "letterSpacing": "1px", "textTransform": "uppercase",
                                                 "fontFamily": FONT, "margin": "0 0 4px 0"}),
                 dcc.Graph(figure=donut_fig, config={"displayModeBar": False}),
             ], style={"flex": "1"}),
             html.Div([
-                html.P("Revenue vs cost", style={"color": DIM, "fontSize": "7px",
+                html.P("Revenue vs cost", style={"color": MUTED, "fontSize": "7px",
                                                   "letterSpacing": "1px", "textTransform": "uppercase",
                                                   "fontFamily": FONT, "margin": "0 0 4px 0"}),
                 dcc.Graph(figure=rev_cost_fig, config={"displayModeBar": False}),
