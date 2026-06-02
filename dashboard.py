@@ -880,7 +880,8 @@ app.layout = html.Div([
     html.Div(id="fo-topbar"),
     html.Div(id="fo-page"),
 ], style={"backgroundColor": BG, "minHeight": "100vh",
-          "fontFamily": FONT, "margin": "0", "padding": "0"})
+          "fontFamily": FONT, "margin": "0", "padding": "0",
+          "zoom": "1.2"})
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -974,6 +975,9 @@ def render_chips(sel_comm, sel_priv, origin, dest):
 def toggle_comm(clicks, ids, current):
     if not ctx.triggered_id:
         return current
+    # n_clicks=0 is a re-render reset, not a real click — ignore it
+    if not ctx.triggered or not ctx.triggered[0].get("value"):
+        return current
     name = ctx.triggered_id["index"]
     sel = list(current or [])
     if name in sel:
@@ -992,6 +996,9 @@ def toggle_comm(clicks, ids, current):
 )
 def toggle_priv(clicks, ids, current):
     if not ctx.triggered_id:
+        return current
+    # n_clicks=0 is a re-render reset, not a real click — ignore it
+    if not ctx.triggered or not ctx.triggered[0].get("value"):
         return current
     name = ctx.triggered_id["index"]
     sel = list(current or [])
@@ -1103,7 +1110,7 @@ def _private_jet_layout(entries, origin, dest, oa, da, dk, dnm, haul, region):
                    style={"color": AMBER, "fontSize": "24px", "fontWeight": "700",
                           "fontFamily": "'Rajdhani', sans-serif",
                           "margin": "0 0 1px 0", "lineHeight": "1"}),
-            html.P("charter price est. (incl. broker fees)",
+            html.P("estimated all-in charter price",
                    style={"color": MUTED, "fontSize": "6px", "fontFamily": FONT,
                           "letterSpacing": "0.4px", "margin": "0 0 10px 0"}),
             # Nonstop badge
@@ -1131,18 +1138,17 @@ def _private_jet_layout(entries, origin, dest, oa, da, dk, dnm, haul, region):
                 }),
             ], style={"display": "flex", "gap": "1px", "margin": "7px 0 2px 0"}),
             html.P(
-                f"{pct}% of range used · {spare:,} nm spare" if ok
-                else f"Route exceeds range by {-spare:,} nm",
+                f"Uses {pct}% of its range — {spare:,} nm left over" if ok
+                else f"Route is {-spare:,} nm beyond this jet's range",
                 style={"color": MUTED, "fontSize": "6px",
                        "fontFamily": FONT, "margin": "0 0 10px 0"},
             ),
             # Stats grid
             html.Div([
-                _mini("Flight time",    f"{flt:.1f}h",           LIGHT),
-                _mini("Cost / pax",     f"${cpp:,.0f}",          TEAL),
-                _mini("Cost / nm",      f"${cpnm:.1f}",          BODY),
-                _mini(f"FL{fl} · M{ac['cruise_mach']:.3f}",
-                      f"{spd_kts} kts",                          BODY),
+                _mini("Flight time",      f"{flt:.1f}h",           LIGHT),
+                _mini("Per person",       f"${cpp:,.0f}",          TEAL),
+                _mini("Price per nm",     f"${cpnm:.1f}",          BODY),
+                _mini("Altitude & speed", f"FL{fl} · {spd_kts} kts", BODY),
             ], style={"display": "grid", "gridTemplateColumns": "1fr 1fr",
                       "gap": "4px"}),
         ], style={
@@ -1177,24 +1183,24 @@ def _private_jet_layout(entries, origin, dest, oa, da, dk, dnm, haul, region):
         return html.Tr(cells)
 
     econ_rows_data = [
-        ("Charter price (est.)",
+        ("Estimated charter price",
          [f"${e['charter_rev']:,.0f}" for e in entries], True, AMBER),
-        ("Base hourly rate",
+        ("Hourly base rate",
          [f"${e['cost_hr_rate']:,.0f}/hr" for e in entries], False, BODY),
-        ("Cost per nm (all-in)",
+        ("Price per nautical mile",
          [f"${(e['charter_rev'] or 0)/dnm:.1f}" for e in entries], False, BODY),
-        ("Cost per pax (full cabin)",
+        ("Per person (full cabin)",
          [f"${(e['charter_rev'] or 0)/e['ac']['seats']:,.0f}" for e in entries],
          False, TEAL),
         ("Fuel cost",
          [f"${e['result'].get('fuel_cost', 0):,.0f}" for e in entries], False, MUTED),
-        ("Fuel burned",
+        ("Fuel used",
          [f"{e['result']['fuel_burned_kg']:,.0f} kg" for e in entries], False, MUTED),
-        ("Est. flight time",
+        ("Estimated flight time",
          [f"{e['result']['flight_time_hr']:.1f}h" for e in entries], False, LIGHT),
-        ("Max range",
+        ("Maximum range",
          [f"{e['ac'].get('range_nm', 0):,} nm" for e in entries], False, BODY),
-        ("Range remaining",
+        ("Range buffer after this route",
          [f"{e['ac'].get('range_nm', 0) - dnm:,} nm" for e in entries], False, TEAL),
     ]
 
@@ -1209,11 +1215,11 @@ def _private_jet_layout(entries, origin, dest, oa, da, dk, dnm, haul, region):
         }))
 
     econ_table = html.Div([
-        _sec("CHARTER ECONOMICS"),
+        _sec("PRICE COMPARISON"),
         html.P(
-            "Charter price includes estimated broker/operator markup (~38%). "
-            "Hourly rates are published base figures; actual quotes vary by operator, "
-            "season, and positioning fees.",
+            "The charter price shown includes the broker's fee (~38% markup on top of the "
+            "operator's base rate). Published hourly rates are a starting point — your "
+            "actual quote will vary by operator, season, and positioning.",
             style={"color": MUTED, "fontSize": "7px", "fontFamily": FONT,
                    "lineHeight": "1.5", "margin": "0 0 10px 0"},
         ),
@@ -1277,10 +1283,10 @@ def _private_jet_layout(entries, origin, dest, oa, da, dk, dnm, haul, region):
     )
 
     range_panel = html.Div([
-        _sec("RANGE VS ROUTE DISTANCE"),
+        _sec("CAN IT FLY NONSTOP?"),
         html.P(
-            "Amber dashed line = this route. A jet must clear it to fly nonstop. "
-            "Longer bars mean more range buffer and flexibility.",
+            "The amber dashed line marks this route's distance. "
+            "Any jet whose bar extends past it can fly nonstop — the longer the bar beyond the line, the more buffer.",
             style={"color": MUTED, "fontSize": "7px", "fontFamily": FONT,
                    "margin": "0 0 8px 0"},
         ),
@@ -1295,14 +1301,14 @@ def _private_jet_layout(entries, origin, dest, oa, da, dk, dnm, haul, region):
     fl = int(W_ac["cruise_alt"] * 3.28084 / 100)
 
     profile_items = [
-        ("Cruise speed",        f"Mach {mach:.3f}  ·  {spd_kts} kts TAS",      LIGHT),
-        ("Cruise altitude",     f"FL{fl}  ({int(W_ac['cruise_alt']/0.3048/1000):.0f},000 ft)", LIGHT),
-        ("Est. flight time",    f"{W_r['flight_time_hr']:.1f} h",               TEAL),
-        ("Fuel burned",         f"{W_r['fuel_burned_kg']:,.0f} kg",              BODY),
-        ("Total CO₂",           f"{W_r['co2_kg']:,.0f} kg  ({W_r['co2_kg']/1000:.1f} t)", BODY),
-        ("Cabin capacity",      f"{W_ac['seats']} passengers",                  LIGHT),
-        ("Aerodynamic (L/D)",   f"{W_r['LD_ratio']}",                          MUTED),
-        ("Range on this route", f"{int(W_ac.get('range_nm',0)/dnm*100) if dnm else '—'}% of max range used", MUTED),
+        ("Cruising speed",        f"Mach {mach:.3f}  ·  {spd_kts} kts",           LIGHT),
+        ("Cruising altitude",     f"FL{fl}  ({int(W_ac['cruise_alt']/0.3048/1000):.0f},000 ft)", LIGHT),
+        ("Estimated flight time", f"{W_r['flight_time_hr']:.1f} hours",            TEAL),
+        ("Fuel used",             f"{W_r['fuel_burned_kg']:,.0f} kg",              BODY),
+        ("CO₂ emissions",         f"{W_r['co2_kg']:,.0f} kg  ({W_r['co2_kg']/1000:.1f} t)", BODY),
+        ("Passenger capacity",    f"{W_ac['seats']} passengers",                   LIGHT),
+        ("Fuel efficiency (L/D)", f"{W_r['LD_ratio']}  (higher = more efficient)", MUTED),
+        ("Route vs max range",    f"Uses {int(W_ac.get('range_nm',0)/dnm*100) if dnm else '—'}% of this jet's range", MUTED),
     ]
 
     profile_panel = html.Div([
@@ -1330,10 +1336,10 @@ def _private_jet_layout(entries, origin, dest, oa, da, dk, dnm, haul, region):
     equiv   = int(co2_kg / max(dk * 0.10, 1))
 
     co2_panel = html.Div([
-        _sec("ENVIRONMENTAL FOOTPRINT"),
+        _sec("CARBON FOOTPRINT"),
         html.Div([
             html.Div([
-                html.P("Total CO₂ Emitted",
+                html.P("Total CO₂ for this flight",
                        style={"color": MUTED, "fontSize": "7px", "letterSpacing": "1px",
                               "textTransform": "uppercase", "fontFamily": FONT,
                               "margin": "0 0 2px 0"}),
@@ -1341,13 +1347,13 @@ def _private_jet_layout(entries, origin, dest, oa, da, dk, dnm, haul, region):
                        style={"color": RED, "fontSize": "20px", "fontWeight": "700",
                               "fontFamily": "'Rajdhani', sans-serif",
                               "margin": "0 0 2px 0", "lineHeight": "1"}),
-                html.P(f"{co2_t:.1f} tonnes — entire charter flight",
+                html.P(f"{co2_t:.1f} tonnes — whole charter",
                        style={"color": MUTED, "fontSize": "7px",
                               "fontFamily": FONT, "margin": "0"}),
             ], style={"flex": "1", "padding": "10px 14px",
                       "borderRight": f"1px solid {BDR}"}),
             html.Div([
-                html.P("Carbon Offset Cost (est.)",
+                html.P("Estimated carbon offset cost",
                        style={"color": MUTED, "fontSize": "7px", "letterSpacing": "1px",
                               "textTransform": "uppercase", "fontFamily": FONT,
                               "margin": "0 0 2px 0"}),
@@ -1355,13 +1361,13 @@ def _private_jet_layout(entries, origin, dest, oa, da, dk, dnm, haul, region):
                        style={"color": AMBER, "fontSize": "20px", "fontWeight": "700",
                               "fontFamily": "'Rajdhani', sans-serif",
                               "margin": "0 0 2px 0", "lineHeight": "1"}),
-                html.P("at $20 / tonne (REDD+ reference rate)",
+                html.P("at $20/tonne — voluntary carbon market rate",
                        style={"color": MUTED, "fontSize": "7px",
                               "fontFamily": FONT, "margin": "0"}),
             ], style={"flex": "1", "padding": "10px 14px",
                       "borderRight": f"1px solid {BDR}"}),
             html.Div([
-                html.P("Commercial Equivalent",
+                html.P("vs. flying commercial",
                        style={"color": MUTED, "fontSize": "7px", "letterSpacing": "1px",
                               "textTransform": "uppercase", "fontFamily": FONT,
                               "margin": "0 0 2px 0"}),
@@ -1369,7 +1375,7 @@ def _private_jet_layout(entries, origin, dest, oa, da, dk, dnm, haul, region):
                        style={"color": BODY, "fontSize": "20px", "fontWeight": "700",
                               "fontFamily": "'Rajdhani', sans-serif",
                               "margin": "0 0 2px 0", "lineHeight": "1"}),
-                html.P("economy passengers at same CO₂ (0.10 kg/pax-km)",
+                html.P("economy passengers would produce the same emissions",
                        style={"color": MUTED, "fontSize": "7px",
                               "fontFamily": FONT, "margin": "0"}),
             ], style={"flex": "1", "padding": "10px 14px"}),
@@ -1410,10 +1416,10 @@ def _private_jet_layout(entries, origin, dest, oa, da, dk, dnm, haul, region):
                 f"${best_val['charter_rev']:,.0f} total",
             ),
             _rec_block(
-                TEAL, "Most Range Margin",
+                TEAL, "Most Range to Spare",
                 best_rng["name"],
-                f"{best_rng['ac'].get('range_nm',0)-dnm:,} nm remaining · "
-                f"safest nonstop option",
+                f"{best_rng['ac'].get('range_nm',0)-dnm:,} nm left over after the route — "
+                f"safest nonstop choice",
             ),
             _rec_block(
                 PURPLE, "Largest Cabin",
@@ -1423,9 +1429,9 @@ def _private_jet_layout(entries, origin, dest, oa, da, dk, dnm, haul, region):
             ),
         ], style={"display": "flex", "gap": "8px", "flexWrap": "wrap"}),
         html.P(
-            "⚠ Charter prices are estimates based on published hourly rates plus a 38% "
-            "broker/operator markup. Actual quotes depend on availability, positioning, "
-            "catering, and trip-specific fees. Request a formal quote from a licensed charter broker.",
+            "⚠ Prices shown are estimates — actual quotes depend on availability, "
+            "positioning costs, catering, and seasonal demand. Always request a formal "
+            "quote from a licensed charter broker before booking.",
             style={"color": MUTED, "fontSize": "7px", "fontFamily": FONT,
                    "lineHeight": "1.5", "margin": "14px 0 0 0"},
         ),
