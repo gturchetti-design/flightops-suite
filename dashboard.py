@@ -685,6 +685,9 @@ def home_layout() -> html.Div:
         html.Div([
             html.Span("50 aircraft · 100 airports · real physics based analysis",
                       style={"color": DIM, "fontSize": "10px", "fontFamily": FONT}),
+            html.Span("G. TURCHETTI",
+                      style={"color": DIM, "fontSize": "10px", "fontFamily": FONT,
+                             "letterSpacing": "1.5px"}),
         ], style={
             "position": "relative", "zIndex": "2",
             "borderTop": f"1px solid {BDR}", "padding": "14px 40px",
