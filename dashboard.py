@@ -579,12 +579,15 @@ def topbar(page_title: str = "") -> html.Div:
 
 def home_layout() -> html.Div:
     rng = random.Random(13)
-    # Varied star sizes and brightness — no grid
+    _drifts = ["starDrift1","starDrift2","starDrift3","starDrift4","starDrift5"]
     stars = []
     for _ in range(60):
-        sz  = rng.choice([1, 1, 1, 2, 2, 3])
-        op  = rng.uniform(0.35, 0.9)
-        blur = f"blur({rng.randint(0,1)}px)"
+        sz       = rng.choice([1, 1, 1, 2, 2, 3])
+        op       = rng.uniform(0.35, 0.9)
+        blur     = f"blur({rng.randint(0,1)}px)"
+        drift    = rng.choice(_drifts)
+        duration = round(rng.uniform(18, 38), 1)
+        delay    = round(rng.uniform(0, 12), 1)
         stars.append(html.Div(style={
             "position":        "absolute",
             "left":            f"{rng.uniform(1, 99)}%",
@@ -595,6 +598,7 @@ def home_layout() -> html.Div:
             "backgroundColor": f"rgba(180,210,255,{op:.2f})",
             "filter":          blur,
             "pointerEvents":   "none",
+            "animation":       f"{drift} {duration}s {delay}s infinite ease-in-out",
         }))
 
     def _cta(accent, icon, title, desc, cta_text, href):
@@ -625,7 +629,7 @@ def home_layout() -> html.Div:
         *stars,
         html.Div([
             # Eyebrow
-            html.Span("Aviation Route Intelligence",
+            html.Span("Aviation Route Analytics",
                       style={"color": TEAL, "fontSize": "12px", "fontWeight": "700",
                              "letterSpacing": "3px", "textTransform": "uppercase",
                              "fontFamily": FONT, "display": "block",
@@ -634,21 +638,19 @@ def home_layout() -> html.Div:
             html.H1([
                 html.Span("FLIGHT", style={"color": WHITE}),
                 html.Span("OPS",    style={"color": TEAL}),
-                html.Span(" SUITE", style={"color": WHITE}),
             ], style={"fontFamily": "'Rajdhani', sans-serif", "fontWeight": "900",
                       "fontSize": "76px", "letterSpacing": "-2px",
                       "margin": "0 0 24px 0", "lineHeight": "1"}),
             # Tagline
             html.P(
-                "Model any route. Compare any fleet. Make the call with data.",
+                "Analyze routes. Compare aircraft. Make better decisions.",
                 style={"color": LIGHT, "fontSize": "22px", "maxWidth": "540px",
                        "lineHeight": "1.45", "fontFamily": FONT,
                        "margin": "0 auto 14px auto", "textAlign": "center",
                        "fontWeight": "500"}
             ),
             html.P(
-                "Built for airline strategists and fleet planners who need "
-                "real numbers, not rules of thumb.",
+                "Built around the engineering and economics of aviation.",
                 style={"color": BODY, "fontSize": "15px", "maxWidth": "460px",
                        "lineHeight": "1.65", "fontFamily": FONT,
                        "margin": "0 auto 44px auto", "textAlign": "center"}
@@ -674,10 +676,8 @@ def home_layout() -> html.Div:
         }),
         # Footer
         html.Div([
-            html.Span("47 aircraft · 100 airports · real physics engine",
+            html.Span("50 aircraft · 100 airports · real physics based analysis",
                       style={"color": DIM, "fontSize": "10px", "fontFamily": FONT}),
-            html.Span("G. Turchetti · Illinois Institute of Technology",
-                      style={"color": "#1a2535", "fontSize": "9px", "fontFamily": FONT}),
         ], style={
             "position": "relative", "zIndex": "2",
             "borderTop": f"1px solid {BDR}", "padding": "14px 40px",
