@@ -319,6 +319,27 @@ drawRoute(14,'rgba(180,60,255,.12)');drawRoute(2.5,'#c060f0');
 </script></body></html>"""
 
 
+def _range_circle_pts(lat, lon, range_km, n=120):
+    """Return n+1 [[lat,lon]] points forming a geodesic circle of range_km from (lat,lon).
+    Works correctly at any distance, including intercontinental ranges."""
+    import math
+    R = 6371.0
+    d = min(range_km / R, math.pi)          # clamp: circle can't exceed hemisphere
+    lr, lo = math.radians(lat), math.radians(lon)
+    pts = []
+    for i in range(n + 1):
+        b = math.radians(i * 360.0 / n)
+        sinlat = math.sin(lr)*math.cos(d) + math.cos(lr)*math.sin(d)*math.cos(b)
+        sinlat = max(-1.0, min(1.0, sinlat))
+        lat2 = math.asin(sinlat)
+        lon2 = lo + math.atan2(
+            math.sin(b)*math.sin(d)*math.cos(lr),
+            math.cos(d) - math.sin(lr)*math.sin(lat2),
+        )
+        pts.append([math.degrees(lat2), math.degrees(lon2)])
+    return pts
+
+
 def _split_antimeridian(wps):
     """Split [[lat,lon],...] waypoints into segments at ±180° crossings.
     Prevents Folium from drawing a horizontal line across the map on
@@ -1481,20 +1502,18 @@ def _private_jet_layout(entries, origin, dest, oa, da, dk, dnm, haul, region):
         tiles="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
         attr="CartoDB", prefer_canvas=True,
     )
-    # Range circles from origin (one per jet, matching RANK_C colors)
+    # Range circles from origin — drawn as geodesic PolyLines so they
+    # render correctly at any distance (folium.Circle fails above ~5000 nm)
     for i, e in enumerate(entries):
-        rng_m = e["ac"].get("range_nm", 0) * 1852
-        if rng_m > 0:
-            folium.Circle(
-                location=[oa["lat"], oa["lon"]],
-                radius=rng_m,
-                color=RANK_C[i],
-                fill=False,
-                weight=1.5,
-                opacity=0.55,
-                dash_array="7,5",
-                tooltip=f"{e['name']}: {e['ac'].get('range_nm',0):,} nm max range",
-            ).add_to(fmap)
+        rng_km = e["ac"].get("range_nm", 0) * 1.852  # nm → km
+        if rng_km > 0:
+            circle_pts = _range_circle_pts(oa["lat"], oa["lon"], rng_km)
+            for seg in _split_antimeridian(circle_pts):
+                folium.PolyLine(
+                    seg, color=RANK_C[i],
+                    weight=2, opacity=0.65, dash_array="8,5",
+                    tooltip=f"{e['name']}: {e['ac'].get('range_nm',0):,} nm max range",
+                ).add_to(fmap)
     # Route line (split at antimeridian to avoid horizontal map artefacts)
     for seg in _split_antimeridian(W_r["waypoints"]):
         folium.PolyLine(seg, color=AMBER, weight=2.5, opacity=0.9).add_to(fmap)
@@ -2126,20 +2145,18 @@ def run_analysis(n, origin, dest, comm_sel, priv_sel,
         tiles="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
         attr="CartoDB", prefer_canvas=True,
     )
-    # Range circles from origin (one per selected aircraft, RANK_C colours)
+    # Range circles from origin — drawn as geodesic PolyLines so they
+    # render correctly at any distance (folium.Circle fails above ~5000 nm)
     for i, e in enumerate(entries):
         rng_km = _max_r(e["ac"])
         if rng_km > 0:
-            folium.Circle(
-                location=[oa["lat"], oa["lon"]],
-                radius=rng_km * 1000,
-                color=RANK_C[i],
-                fill=False,
-                weight=1.5,
-                opacity=0.5,
-                dash_array="7,5",
-                tooltip=f"{e['name']}: ~{rng_km:,} km max range",
-            ).add_to(fmap)
+            circle_pts = _range_circle_pts(oa["lat"], oa["lon"], rng_km)
+            for seg in _split_antimeridian(circle_pts):
+                folium.PolyLine(
+                    seg, color=RANK_C[i],
+                    weight=2, opacity=0.60, dash_array="8,5",
+                    tooltip=f"{e['name']}: ~{rng_km:,} km max range",
+                ).add_to(fmap)
     # Route line (split at antimeridian to avoid horizontal map artefacts)
     for seg in _split_antimeridian(r0["waypoints"]):
         folium.PolyLine(seg, color=TEAL, weight=2.5, opacity=0.9).add_to(fmap)
