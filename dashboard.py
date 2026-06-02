@@ -685,7 +685,7 @@ def home_layout() -> html.Div:
         }),
     ], style={"position": "relative", "overflow": "hidden",
               "backgroundColor": BG, "minHeight": "calc(100vh - 48px)",
-              "zoom": "0.917"})
+              "zoom": "0.833"})
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -2145,18 +2145,6 @@ def run_analysis(n, origin, dest, comm_sel, priv_sel,
         tiles="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
         attr="CartoDB", prefer_canvas=True,
     )
-    # Range circles from origin — drawn as geodesic PolyLines so they
-    # render correctly at any distance (folium.Circle fails above ~5000 nm)
-    for i, e in enumerate(entries):
-        rng_km = _max_r(e["ac"])
-        if rng_km > 0:
-            circle_pts = _range_circle_pts(oa["lat"], oa["lon"], rng_km)
-            for seg in _split_antimeridian(circle_pts):
-                folium.PolyLine(
-                    seg, color=RANK_C[i],
-                    weight=2, opacity=0.60, dash_array="8,5",
-                    tooltip=f"{e['name']}: ~{rng_km:,} km max range",
-                ).add_to(fmap)
     # Route line (split at antimeridian to avoid horizontal map artefacts)
     for seg in _split_antimeridian(r0["waypoints"]):
         folium.PolyLine(seg, color=TEAL, weight=2.5, opacity=0.9).add_to(fmap)
