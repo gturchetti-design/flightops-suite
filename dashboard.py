@@ -319,6 +319,37 @@ drawRoute(14,'rgba(180,60,255,.12)');drawRoute(2.5,'#c060f0');
 </script></body></html>"""
 
 
+def _split_antimeridian(wps):
+    """Split [[lat,lon],...] waypoints into segments at ±180° crossings.
+    Prevents Folium from drawing a horizontal line across the map on
+    transpacific/trans-antimeridian routes."""
+    if len(wps) < 2:
+        return [wps]
+    segs, cur = [], [wps[0]]
+    for i in range(1, len(wps)):
+        p, q = cur[-1], wps[i]
+        d = q[1] - p[1]
+        if abs(d) > 180:
+            # true direction is the short way around
+            actual_d = d - 360 if d > 180 else d + 360
+            if actual_d < 0:  # westward crossing at -180 / +180
+                t = (-180 - p[1]) / actual_d
+                cross_lat = p[0] + t * (q[0] - p[0])
+                cur.append([cross_lat, -180])
+                segs.append(cur)
+                cur = [[cross_lat, 180], q]
+            else:              # eastward crossing at +180 / -180
+                t = (180 - p[1]) / actual_d
+                cross_lat = p[0] + t * (q[0] - p[0])
+                cur.append([cross_lat, 180])
+                segs.append(cur)
+                cur = [[cross_lat, -180], q]
+        else:
+            cur.append(q)
+    segs.append(cur)
+    return [s for s in segs if len(s) >= 2]
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 # FLEET PRE-COMPUTED DATA
 # ══════════════════════════════════════════════════════════════════════════════
@@ -632,7 +663,8 @@ def home_layout() -> html.Div:
             "display": "flex", "justifyContent": "space-between",
         }),
     ], style={"position": "relative", "overflow": "hidden",
-              "backgroundColor": BG, "minHeight": "calc(100vh - 48px)"})
+              "backgroundColor": BG, "minHeight": "calc(100vh - 48px)",
+              "zoom": "0.917"})
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -1218,8 +1250,8 @@ def _private_jet_layout(entries, origin, dest, oa, da, dk, dnm, haul, region):
         _sec("PRICE COMPARISON"),
         html.P(
             "The charter price shown includes the broker's fee (~38% markup on top of the "
-            "operator's base rate). Published hourly rates are a starting point — your "
-            "actual quote will vary by operator, season, and positioning.",
+            "operator's base rate). Published hourly rates are a starting point. "
+            "Your actual quote will vary by operator, season, and positioning.",
             style={"color": MUTED, "fontSize": "7px", "fontFamily": FONT,
                    "lineHeight": "1.5", "margin": "0 0 10px 0"},
         ),
@@ -1418,8 +1450,8 @@ def _private_jet_layout(entries, origin, dest, oa, da, dk, dnm, haul, region):
             _rec_block(
                 TEAL, "Most Range to Spare",
                 best_rng["name"],
-                f"{best_rng['ac'].get('range_nm',0)-dnm:,} nm left over after the route — "
-                f"safest nonstop choice",
+                f"{best_rng['ac'].get('range_nm',0)-dnm:,} nm left after the route. "
+                f"Safest nonstop option.",
             ),
             _rec_block(
                 PURPLE, "Largest Cabin",
@@ -1429,9 +1461,9 @@ def _private_jet_layout(entries, origin, dest, oa, da, dk, dnm, haul, region):
             ),
         ], style={"display": "flex", "gap": "8px", "flexWrap": "wrap"}),
         html.P(
-            "⚠ Prices shown are estimates — actual quotes depend on availability, "
-            "positioning costs, catering, and seasonal demand. Always request a formal "
-            "quote from a licensed charter broker before booking.",
+            "⚠ Prices shown are estimates. Actual quotes depend on availability, "
+            "positioning costs, catering, and seasonal demand. "
+            "Always request a formal quote from a licensed charter broker before booking.",
             style={"color": MUTED, "fontSize": "7px", "fontFamily": FONT,
                    "lineHeight": "1.5", "margin": "14px 0 0 0"},
         ),
@@ -1449,7 +1481,23 @@ def _private_jet_layout(entries, origin, dest, oa, da, dk, dnm, haul, region):
         tiles="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
         attr="CartoDB", prefer_canvas=True,
     )
-    folium.PolyLine(W_r["waypoints"], color=AMBER, weight=2.5, opacity=0.9).add_to(fmap)
+    # Range circles from origin (one per jet, matching RANK_C colors)
+    for i, e in enumerate(entries):
+        rng_m = e["ac"].get("range_nm", 0) * 1852
+        if rng_m > 0:
+            folium.Circle(
+                location=[oa["lat"], oa["lon"]],
+                radius=rng_m,
+                color=RANK_C[i],
+                fill=False,
+                weight=1.5,
+                opacity=0.55,
+                dash_array="7,5",
+                tooltip=f"{e['name']}: {e['ac'].get('range_nm',0):,} nm max range",
+            ).add_to(fmap)
+    # Route line (split at antimeridian to avoid horizontal map artefacts)
+    for seg in _split_antimeridian(W_r["waypoints"]):
+        folium.PolyLine(seg, color=AMBER, weight=2.5, opacity=0.9).add_to(fmap)
     for code_ap, ap in [(origin, oa), (dest, da)]:
         folium.CircleMarker(
             location=[ap["lat"], ap["lon"]], radius=6,
@@ -2078,11 +2126,27 @@ def run_analysis(n, origin, dest, comm_sel, priv_sel,
         tiles="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
         attr="CartoDB", prefer_canvas=True,
     )
-    folium.PolyLine(r0["waypoints"], color="#00d4aa", weight=2.5, opacity=0.9).add_to(fmap)
+    # Range circles from origin (one per selected aircraft, RANK_C colours)
+    for i, e in enumerate(entries):
+        rng_km = _max_r(e["ac"])
+        if rng_km > 0:
+            folium.Circle(
+                location=[oa["lat"], oa["lon"]],
+                radius=rng_km * 1000,
+                color=RANK_C[i],
+                fill=False,
+                weight=1.5,
+                opacity=0.5,
+                dash_array="7,5",
+                tooltip=f"{e['name']}: ~{rng_km:,} km max range",
+            ).add_to(fmap)
+    # Route line (split at antimeridian to avoid horizontal map artefacts)
+    for seg in _split_antimeridian(r0["waypoints"]):
+        folium.PolyLine(seg, color=TEAL, weight=2.5, opacity=0.9).add_to(fmap)
     for code_ap, ap in [(origin, oa), (dest, da)]:
         folium.CircleMarker(
-            location=[ap["lat"], ap["lon"]], radius=6, color="#00d4aa",
-            fill=True, fill_color="#00d4aa", fill_opacity=1.0,
+            location=[ap["lat"], ap["lon"]], radius=6, color=TEAL,
+            fill=True, fill_color=TEAL, fill_opacity=1.0,
             tooltip=ap["name"] + " (" + code_ap + ")",
         ).add_to(fmap)
     globe = html.Div([
