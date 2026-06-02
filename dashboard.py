@@ -934,9 +934,20 @@ app = dash.Dash(
     __name__,
     suppress_callback_exceptions=True,
     external_stylesheets=[FONTS_URL],
-    meta_tags=[{"name": "viewport", "content": "width=device-width, initial-scale=1"}],
+    meta_tags=[
+        {"name": "viewport",        "content": "width=device-width, initial-scale=1"},
+        {"property": "og:title",       "content": "FlightOps — Aviation Route Analytics"},
+        {"property": "og:description", "content": "Analyze routes. Compare aircraft. Make better decisions."},
+        {"property": "og:image",       "content": "https://flightops-suite-1.onrender.com/assets/og_image.png"},
+        {"property": "og:type",        "content": "website"},
+        {"property": "og:url",         "content": "https://flightops-suite-1.onrender.com"},
+        {"name": "twitter:card",       "content": "summary_large_image"},
+        {"name": "twitter:title",      "content": "FlightOps — Aviation Route Analytics"},
+        {"name": "twitter:description","content": "Analyze routes. Compare aircraft. Make better decisions."},
+        {"name": "twitter:image",      "content": "https://flightops-suite-1.onrender.com/assets/og_image.png"},
+    ],
 )
-app.title = "FlightOps Suite"
+app.title = "FlightOps"
 
 app.layout = html.Div([
     dcc.Location(id="url", refresh=False),
