@@ -20,11 +20,11 @@ body {
 }
 
 /* --- Star drift (slow, subtle float) --- */
-@keyframes starDrift1 { 0%,100%{transform:translate(0,0)}  50%{transform:translate(4px,-3px)} }
-@keyframes starDrift2 { 0%,100%{transform:translate(0,0)}  50%{transform:translate(-3px,4px)} }
-@keyframes starDrift3 { 0%,100%{transform:translate(0,0)}  50%{transform:translate(3px,3px)}  }
-@keyframes starDrift4 { 0%,100%{transform:translate(0,0)}  50%{transform:translate(-4px,-2px)}}
-@keyframes starDrift5 { 0%,100%{transform:translate(0,0)}  50%{transform:translate(2px,-4px)} }
+@keyframes starDrift1 { 0%,100%{transform:translate(0,0)}  50%{transform:translate(7px,-5px)} }
+@keyframes starDrift2 { 0%,100%{transform:translate(0,0)}  50%{transform:translate(-6px,7px)} }
+@keyframes starDrift3 { 0%,100%{transform:translate(0,0)}  50%{transform:translate(6px,6px)}  }
+@keyframes starDrift4 { 0%,100%{transform:translate(0,0)}  50%{transform:translate(-7px,-4px)}}
+@keyframes starDrift5 { 0%,100%{transform:translate(0,0)}  50%{transform:translate(4px,-7px)} }
 
 /* --- Title reveal --- */
 @keyframes fadeUp {

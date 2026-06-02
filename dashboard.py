@@ -643,10 +643,17 @@ def home_layout() -> html.Div:
                       "margin": "0 0 24px 0", "lineHeight": "1"}),
             # Tagline
             html.P(
-                "Analyze routes. Compare aircraft. Make better decisions.",
+                "Analyze routes. Compare aircraft.",
                 style={"color": LIGHT, "fontSize": "22px", "maxWidth": "540px",
                        "lineHeight": "1.45", "fontFamily": FONT,
-                       "margin": "0 auto 14px auto", "textAlign": "center",
+                       "margin": "0 auto 0 auto", "textAlign": "center",
+                       "fontWeight": "500"}
+            ),
+            html.P(
+                "Make better decisions.",
+                style={"color": TEAL, "fontSize": "22px", "maxWidth": "540px",
+                       "lineHeight": "1.45", "fontFamily": FONT,
+                       "margin": "10px auto 14px auto", "textAlign": "center",
                        "fontWeight": "500"}
             ),
             html.P(
@@ -685,7 +692,7 @@ def home_layout() -> html.Div:
         }),
     ], style={"position": "relative", "overflow": "hidden",
               "backgroundColor": BG, "minHeight": "calc(100vh - 48px)",
-              "zoom": "0.833"})
+              "zoom": "0.917"})
 
 
 # ══════════════════════════════════════════════════════════════════════════════
