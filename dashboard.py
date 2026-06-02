@@ -974,9 +974,6 @@ def render_chips(sel_comm, sel_priv, origin, dest):
 def toggle_comm(clicks, ids, current):
     if not ctx.triggered_id:
         return current
-    # n_clicks=0 means a re-render reset, not a real click — reject it
-    if not ctx.triggered or not ctx.triggered[0].get("value"):
-        return current
     name = ctx.triggered_id["index"]
     sel = list(current or [])
     if name in sel:
@@ -995,9 +992,6 @@ def toggle_comm(clicks, ids, current):
 )
 def toggle_priv(clicks, ids, current):
     if not ctx.triggered_id:
-        return current
-    # n_clicks=0 means a re-render reset, not a real click — reject it
-    if not ctx.triggered or not ctx.triggered[0].get("value"):
         return current
     name = ctx.triggered_id["index"]
     sel = list(current or [])
@@ -1328,89 +1322,6 @@ def _private_jet_layout(entries, origin, dest, oa, da, dk, dnm, haul, region):
     ], style={"backgroundColor": CARD, "border": f"1px solid {BDR}",
               "borderRadius": "4px", "padding": "14px 16px"})
 
-    # ── Charter cost breakdown ────────────────────────────────────────────────
-    _fuel_c   = W_r.get("fuel_cost", 0)
-    _op_c     = (W["charter_cost"] or 0) - _fuel_c          # non-fuel operator cost
-    _crew_c   = max(0, _op_c * 0.38)                        # pilots + FA
-    _maint_c  = max(0, _op_c * 0.27)                        # maintenance reserve
-    _fbo_c    = max(0, _op_c * 0.20)                        # FBO + landing fees
-    _other_c  = max(0, _op_c - _crew_c - _maint_c - _fbo_c)
-    _markup_c = max(0, (W["charter_rev"] or 0) - (W["charter_cost"] or 0))
-
-    _cost_donut = go.Figure(go.Pie(
-        labels=["Fuel", "Crew", "Maintenance", "FBO / Landing", "Other ops", "Broker markup"],
-        values=[_fuel_c, _crew_c, _maint_c, _fbo_c, _other_c, _markup_c],
-        hole=0.60, sort=False,
-        marker=dict(
-            colors=[TEAL, PURPLE, AMBER, MUTED, DIM, RED],
-            line=dict(color=CARD, width=2),
-        ),
-        textinfo="label+percent",
-        textfont=dict(size=9, color=WHITE, family=FONT),
-        hovertemplate="<b>%{label}</b><br>$%{value:,.0f} (%{percent})<extra></extra>",
-    ))
-    _cost_donut.add_annotation(
-        text=f"${W['charter_rev']:,.0f}<br><span style='font-size:8px'>total price</span>",
-        x=0.5, y=0.5, showarrow=False,
-        font=dict(size=11, color=WHITE, family=FONT),
-    )
-    _cost_donut.update_layout(
-        showlegend=False,
-        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-        margin=dict(l=10, r=10, t=10, b=10), height=200,
-        font=dict(family=FONT),
-    )
-
-    def _cost_line(label, val, color):
-        return html.Div([
-            html.Span(label, style={"color": BODY, "fontSize": "8px", "fontFamily": FONT}),
-            html.Span(f"${val:,.0f}",
-                      style={"color": color, "fontSize": "8px",
-                             "fontFamily": FONT, "fontWeight": "600"}),
-        ], style={"display": "flex", "justifyContent": "space-between",
-                  "padding": "4px 0", "borderBottom": f"1px solid {BDR}"})
-
-    cost_breakdown = html.Div([
-        _sec(f"CHARTER COST BREAKDOWN — {W['name'].upper()}"),
-        html.P(
-            "Approximate cost composition. Fuel from physics model; crew, maintenance, "
-            "FBO, and broker markup are industry-average estimates.",
-            style={"color": MUTED, "fontSize": "7px", "fontFamily": FONT,
-                   "lineHeight": "1.5", "margin": "0 0 12px 0"},
-        ),
-        html.Div([
-            html.Div([
-                dcc.Graph(figure=_cost_donut, config={"displayModeBar": False}),
-            ], style={"flex": "1", "minWidth": "180px"}),
-            html.Div([
-                html.P("Cost structure", style={"color": MUTED, "fontSize": "7px",
-                                                "letterSpacing": "1px",
-                                                "textTransform": "uppercase",
-                                                "fontFamily": FONT, "margin": "0 0 8px 0"}),
-                _cost_line("Fuel (physics model)",           _fuel_c,   TEAL),
-                _cost_line("Crew — pilots + flight attendant", _crew_c, PURPLE),
-                _cost_line("Maintenance reserve",             _maint_c, AMBER),
-                _cost_line("FBO / Landing fees",              _fbo_c,   MUTED),
-                _cost_line("Other ops (nav, permits, misc.)", _other_c, DIM),
-                html.Div(style={"height": "4px"}),
-                _cost_line("Sub-total (operator cost)",
-                           W["charter_cost"] or 0,           BODY),
-                _cost_line("Broker / operator markup (~38%)", _markup_c, RED),
-                html.Div([
-                    html.Span("Charter price to client",
-                              style={"color": WHITE, "fontSize": "9px",
-                                     "fontFamily": FONT, "fontWeight": "700"}),
-                    html.Span(f"${W['charter_rev']:,.0f}",
-                              style={"color": AMBER, "fontSize": "11px",
-                                     "fontFamily": FONT, "fontWeight": "700"}),
-                ], style={"display": "flex", "justifyContent": "space-between",
-                          "padding": "6px 0 0 0"}),
-            ], style={"flex": "1.2", "paddingLeft": "16px",
-                      "borderLeft": f"1px solid {BDR}"}),
-        ], style={"display": "flex", "gap": "10px", "alignItems": "center"}),
-    ], style={"backgroundColor": CARD, "border": f"1px solid {BDR}",
-              "borderRadius": "4px", "padding": "14px 16px"})
-
     # ── CO2 & sustainability ──────────────────────────────────────────────────
     co2_kg  = W_r["co2_kg"]
     co2_t   = co2_kg / 1000
@@ -1553,7 +1464,6 @@ def _private_jet_layout(entries, origin, dest, oa, da, dk, dnm, haul, region):
         econ_table,
         range_panel,
         profile_panel,
-        cost_breakdown,
         co2_panel,
         rec,
         globe,
