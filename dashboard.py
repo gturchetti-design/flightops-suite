@@ -108,6 +108,11 @@ _LEASING = {
     "Airbus A220-300":        5000, "Embraer E195-E2":       4800,
     "Bombardier CRJ-900":     4200, "ATR 72-600":            2000,
     "Concorde":              35000, "Boom Overture":         30000,
+    # newer additions
+    "Airbus A350-1000":      21000, "Airbus A321XLR":         9500,
+    "Airbus A220-100":        4500, "Boeing 737 MAX 8":       7200,
+    "Boeing 737 MAX 10":      7800, "Boeing 787-8":          17000,
+    "Boeing 787-10":         19000, "Comac C919":             6800,
 }
 _OVERHEAD = {  # corporate overhead allocated per flight
     "Boeing 747-8F":14000,"Airbus A380-800":14000,"Boeing 777-300ER":13000,
@@ -117,6 +122,9 @@ _OVERHEAD = {  # corporate overhead allocated per flight
     "Boeing 737-800":6500,"Airbus A320neo":7000,"Airbus A220-300":5500,
     "Embraer E195-E2":5000,"Bombardier CRJ-900":4000,"ATR 72-600":3000,
     "Concorde":20000,"Boom Overture":18000,
+    "Airbus A350-1000":13500,"Airbus A321XLR":8000,"Airbus A220-100":5000,
+    "Boeing 737 MAX 8":6800,"Boeing 737 MAX 10":7200,"Boeing 787-8":11500,
+    "Boeing 787-10":12500,"Comac C919":6500,
 }
 _INSURANCE = {  # hull + liability per flight
     "Boeing 747-8F":6000,"Airbus A380-800":6500,"Boeing 777-300ER":5500,
@@ -126,6 +134,9 @@ _INSURANCE = {  # hull + liability per flight
     "Boeing 737-800":2400,"Airbus A320neo":2600,"Airbus A220-300":2200,
     "Embraer E195-E2":2000,"Bombardier CRJ-900":1600,"ATR 72-600":1200,
     "Concorde":8000,"Boom Overture":7000,
+    "Airbus A350-1000":5500,"Airbus A321XLR":2900,"Airbus A220-100":2000,
+    "Boeing 737 MAX 8":2400,"Boeing 737 MAX 10":2600,"Boeing 787-8":4500,
+    "Boeing 787-10":5000,"Comac C919":2300,
 }
 _EU_ETS_CODES = {
     "MAD","BCN","CDG","FRA","AMS","MXP","FCO","MUC","ZRH","VIE",
@@ -324,7 +335,7 @@ def _range_circle_pts(lat, lon, range_km, n=120):
     Works correctly at any distance, including intercontinental ranges."""
     import math
     R = 6371.0
-    d = min(range_km / R, math.pi)          # clamp: circle can't exceed hemisphere
+    d = min(range_km / R, 1.40)  # cap at ~80° so the circle stays large & visible on map
     lr, lo = math.radians(lat), math.radians(lon)
     pts = []
     for i in range(n + 1):
@@ -437,47 +448,35 @@ def _best_use(ac: dict, mr: int) -> str:
             "Ultra long haul / flag routes")
 
 
-# Published manufacturer list prices (USD millions, approximate)
-_LIST_PRICE = {
-    "Boeing 737-800":        "$82M",
-    "Boeing 737 MAX 9":      "$125M",
-    "Boeing 757-200":        "$95M est.",
-    "Airbus A220-300":       "$91M",
-    "Airbus A320neo":        "$110M",
-    "Airbus A321neo":        "$130M",
-    "Embraer E195-E2":       "$64M",
-    "Bombardier CRJ-900":    "$47M",
-    "ATR 72-600":            "$27M",
-    "Boeing 767-300ER":      "$200M est.",
-    "Boeing 777-300ER":      "$375M",
-    "Boeing 777X (777-9)":   "$440M",
-    "Boeing 787-9":          "$292M",
-    "Boeing 747-8F":         "$418M",
-    "Airbus A330-900neo":    "$296M",
-    "Airbus A330-200F":      "$230M",
-    "Airbus A350-900":       "$317M",
-    "Airbus A380-800":       "$445M",
-    "Concorde":              "Historical",
-    "Boom Overture":         "$200M est.",
-    "Gulfstream G700":       "$75M",
-    "Bombardier Global 7500":"$73M",
-    "Dassault Falcon 10X":   "$80M",
-    "Gulfstream G650ER":     "$66M",
-    "Boeing BBJ 787":        "$300M+",
-    "Boeing BBJ 737 MAX":    "$100M",
-    "Embraer Lineage 1000E": "$53M",
-    "Cessna Citation Longitude": "$27M",
-    "Cessna Citation XLS+":      "$13M",
-    "Cessna Citation Sovereign+":"$18M",
-    "Bombardier Challenger 350": "$27M",
-    "Bombardier Challenger 650": "$32M",
-    "Bombardier Global 6500":    "$52M",
-    "Dassault Falcon 2000LXS":   "$36M",
-    "Dassault Falcon 8X":        "$58M",
-    "Embraer Praetor 600":       "$21M",
-    "Gulfstream G280":           "$25M",
-    "Gulfstream G550":           "$62M",
-    "Gulfstream G600":           "$57M",
+# Published manufacturer list prices — stored as numeric millions for correct sorting.
+# None = historical / not publicly listed.
+_LIST_PRICE_M = {
+    # Commercial
+    "Boeing 737-800":         82,  "Boeing 737 MAX 8":       122,
+    "Boeing 737 MAX 9":      125,  "Boeing 737 MAX 10":      135,
+    "Boeing 757-200":         95,  "Boeing 767-300ER":       200,
+    "Boeing 777-300ER":      375,  "Boeing 777X (777-9)":    440,
+    "Boeing 787-8":          248,  "Boeing 787-9":           292,
+    "Boeing 787-10":         338,  "Boeing 747-8F":          418,
+    "Airbus A220-100":        81,  "Airbus A220-300":         91,
+    "Airbus A320neo":        110,  "Airbus A321neo":         130,
+    "Airbus A321XLR":        140,  "Airbus A330-200F":       230,
+    "Airbus A330-900neo":    296,  "Airbus A350-900":        317,
+    "Airbus A350-1000":      366,  "Airbus A380-800":        445,
+    "Embraer E195-E2":        64,  "Bombardier CRJ-900":      47,
+    "ATR 72-600":             27,  "Comac C919":              99,
+    "Concorde":             None,  "Boom Overture":          200,
+    # Private / business jets
+    "Gulfstream G280":        25,  "Gulfstream G550":         62,
+    "Gulfstream G600":        57,  "Gulfstream G650ER":       66,
+    "Gulfstream G700":        75,  "Bombardier Challenger 350": 27,
+    "Bombardier Challenger 650": 32, "Bombardier Global 6500":52,
+    "Bombardier Global 7500": 73,  "Dassault Falcon 2000LXS": 36,
+    "Dassault Falcon 8X":     58,  "Dassault Falcon 10X":     80,
+    "Embraer Praetor 600":    21,  "Embraer Lineage 1000E":   53,
+    "Cessna Citation XLS+":   13,  "Cessna Citation Sovereign+": 18,
+    "Cessna Citation Longitude": 27, "Boeing BBJ 737 MAX":   100,
+    "Boeing BBJ 787":        300,
 }
 
 _COMM_ROWS = []
@@ -489,14 +488,14 @@ for _n, _ac in COMMERCIAL.items():
     _COMM_ROWS.append({
         "Aircraft":      _n,
         "Type":          _ac_type(_n, _ac),
-        "Seats":         _ac["seats"] if _ac["seats"] > 0 else "—",
+        "Seats":         _ac["seats"] if _ac["seats"] > 0 else None,
         "Max Range km":  _mr,
         "Mach":          _ac["cruise_mach"],
         "L/D max":       round(_ld, 1),
-        "CO2/pax 3k kg": _co2pp(_ac, 3000) or "—",
-        "CASM 500km c":  f"{_c500:.2f}" if _c500 else "—",
-        "CASM 3000km c": f"{_c3k:.2f}"  if _c3k  else "—",
-        "List price":    _LIST_PRICE.get(_n, "—"),
+        "CO2/pax 3k kg": _co2pp(_ac, 3000),        # None for freighters
+        "CASM 500km ¢":  _c500,                     # float — sorts correctly
+        "CASM 3000km ¢": _c3k,                      # float — sorts correctly
+        "Price ($M)":    _LIST_PRICE_M.get(_n),     # int/None — sorts correctly
         "Best use":      _best_use(_ac, _mr),
         "_c500": _c500, "_c3k": _c3k,
     })
@@ -511,11 +510,11 @@ for _n, _ac in PRIVATE.items():
         "Aircraft":      _n,
         "Category":      _cat,
         "Pax":           _ac["seats"],
-        "Range nm":      _rnm or "—",
+        "Range nm":      _rnm if _rnm else None,    # numeric — sorts correctly
         "Mach":          _ac["cruise_mach"],
         "Cruise alt ft": int(_ac["cruise_alt"] * 3.28084),
-        "Cost/hr $":     f"{_ac.get('cost_hr', 0):,}",
-        "List price":    _LIST_PRICE.get(_n, "—"),
+        "Cost/hr ($)":   _ac.get("cost_hr", 0),     # int — sorts correctly
+        "Price ($M)":    _LIST_PRICE_M.get(_n),     # int/None — sorts correctly
         "Use case":      ("Intercontinental" if _rnm >= 7000 else
                           "Transatlantic"     if _rnm >= 5000 else "Continental"),
     })
@@ -528,10 +527,9 @@ _LOW_CO2     = min(_co2_l, key=lambda x: x[1])[0]   if _co2_l  else "—"
 _c500_n = [(r["Aircraft"], r["_c500"]) for r in _COMM_ROWS
             if r["_c500"] and r["Type"] in ("Narrowbody", "Regional")]
 _BEST_SHORT  = min(_c500_n, key=lambda x: x[1])[0]  if _c500_n else "—"
-_BEST_PRIV   = max(_PRIV_ROWS, key=lambda r: r["Range nm"]
-                   if isinstance(r["Range nm"], int) else 0)["Aircraft"]
-_c3k_idx = [(i, float(r["CASM 3000km c"])) for i, r in enumerate(_COMM_ROWS)
-             if r["CASM 3000km c"] != "—"]
+_BEST_PRIV   = max(_PRIV_ROWS, key=lambda r: r["Range nm"] or 0)["Aircraft"]
+_c3k_idx = [(i, r["CASM 3000km ¢"]) for i, r in enumerate(_COMM_ROWS)
+             if r["CASM 3000km ¢"] is not None]
 _BEST_IDX    = min(_c3k_idx, key=lambda x: x[1])[0] if _c3k_idx else None
 
 
@@ -713,7 +711,7 @@ _COND_COMM = [
     {"if": {"row_index": "odd"},  "backgroundColor": BG},
     {"if": {"state": "active"},   "backgroundColor": BDR2,
      "color": WHITE, "border": f"1px solid {BDR2}"},
-    {"if": {"column_id": ["CASM 500km c", "CASM 3000km c"]}, "color": AMBER},
+    {"if": {"column_id": ["CASM 500km ¢", "CASM 3000km ¢"]}, "color": AMBER},
     *(([{"if": {"row_index": _BEST_IDX, "column_id": "Aircraft"},
           "color": WHITE, "fontWeight": "700"},
         {"if": {"row_index": _BEST_IDX}, "color": TEAL}])
@@ -723,7 +721,7 @@ _COND_PRIV = [
     {"if": {"row_index": "odd"},  "backgroundColor": BG},
     {"if": {"state": "active"},   "backgroundColor": BDR2,
      "color": WHITE, "border": f"1px solid {BDR2}"},
-    {"if": {"column_id": "Cost/hr $"}, "color": AMBER},
+    {"if": {"column_id": "Cost/hr ($)"}, "color": AMBER},
     {"if": {"filter_query": '{Aircraft} = "Gulfstream G700"', "column_id": "Aircraft"},
      "color": AMBER, "fontWeight": "700"},
 ]
@@ -764,7 +762,25 @@ def fleet_layout() -> html.Div:
         _sec("COMMERCIAL AIRLINERS"),
         html.Div(
             dash_table.DataTable(
-                columns=[{"name": c, "id": c} for c in comm_display[0]],
+                columns=[
+                    {"name": "Aircraft",       "id": "Aircraft"},
+                    {"name": "Type",           "id": "Type"},
+                    {"name": "Seats",          "id": "Seats",          "type": "numeric"},
+                    {"name": "Max Range km",   "id": "Max Range km",   "type": "numeric"},
+                    {"name": "Mach",           "id": "Mach",           "type": "numeric",
+                     "format": {"specifier": ".3f"}},
+                    {"name": "L/D max",        "id": "L/D max",        "type": "numeric",
+                     "format": {"specifier": ".1f"}},
+                    {"name": "CO2/pax 3k kg",  "id": "CO2/pax 3k kg",  "type": "numeric",
+                     "format": {"specifier": ".1f"}},
+                    {"name": "CASM 500km ¢",   "id": "CASM 500km ¢",   "type": "numeric",
+                     "format": {"specifier": ".2f"}},
+                    {"name": "CASM 3000km ¢",  "id": "CASM 3000km ¢",  "type": "numeric",
+                     "format": {"specifier": ".2f"}},
+                    {"name": "Price ($M)",     "id": "Price ($M)",     "type": "numeric",
+                     "format": {"specifier": ".0f"}},
+                    {"name": "Best use",       "id": "Best use"},
+                ],
                 data=comm_display, sort_action="native", page_action="none",
                 style_table={"overflowX": "auto"},
                 style_header=_TH, style_data=_TD,
@@ -783,7 +799,20 @@ def fleet_layout() -> html.Div:
         _sec("BUSINESS & PRIVATE JETS"),
         html.Div(
             dash_table.DataTable(
-                columns=[{"name": c, "id": c} for c in _PRIV_ROWS[0]] if _PRIV_ROWS else [],
+                columns=[
+                    {"name": "Aircraft",       "id": "Aircraft"},
+                    {"name": "Category",       "id": "Category"},
+                    {"name": "Pax",            "id": "Pax",            "type": "numeric"},
+                    {"name": "Range nm",       "id": "Range nm",       "type": "numeric"},
+                    {"name": "Mach",           "id": "Mach",           "type": "numeric",
+                     "format": {"specifier": ".3f"}},
+                    {"name": "Cruise alt ft",  "id": "Cruise alt ft",  "type": "numeric"},
+                    {"name": "Cost/hr ($)",    "id": "Cost/hr ($)",    "type": "numeric",
+                     "format": {"specifier": ",.0f"}},
+                    {"name": "Price ($M)",     "id": "Price ($M)",     "type": "numeric",
+                     "format": {"specifier": ".0f"}},
+                    {"name": "Use case",       "id": "Use case"},
+                ] if _PRIV_ROWS else [],
                 data=_PRIV_ROWS, sort_action="native", page_action="none",
                 style_table={"overflowX": "auto"},
                 style_header=_TH, style_data=_TD,
@@ -1264,7 +1293,8 @@ def _private_jet_layout(entries, origin, dest, oa, da, dk, dnm, haul, region):
         ("Price per nautical mile",
          [f"${(e['charter_rev'] or 0)/dnm:.1f}" for e in entries], False, BODY),
         ("Per person (full cabin)",
-         [f"${(e['charter_rev'] or 0)/e['ac']['seats']:,.0f}" for e in entries],
+         [f"${(e['charter_rev'] or 0)/e['ac']['seats']:,.0f}"
+          if e['ac']['seats'] > 0 else "—" for e in entries],
          False, TEAL),
         ("Fuel cost",
          [f"${e['result'].get('fuel_cost', 0):,.0f}" for e in entries], False, MUTED),
